@@ -1,0 +1,18 @@
+{
+  "name": "OpportunityX",
+  "short_name": "OpportunityX",
+  "description": "AI-powered Career OS for Students. Discover hackathons, internships, scholarships, build dream teams, and analyze resumes with AI.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d101b",
+  "theme_color": "#0d101b",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

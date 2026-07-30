@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Allow: /meet-the-founder
+Allow: /meet-the-team
+Allow: /founder
+Allow: /terms-and-conditions
+Allow: /privacy-policy
+Allow: /pricing
+
+Sitemap: https://opportunityx.co.in/sitemap.xml
