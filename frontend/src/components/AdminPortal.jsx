@@ -31,7 +31,7 @@ import { CertificateViewerModal } from './CertificateViewerModal';
 
 const DEFAULT_KEY = "OX-SECURE-ADMIN-2026-9f8a3c7b1e4d0258";
 const TOTP_SECRET = "JBSWY3DPEHPK3PXP";
-const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+const API_BASE = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://opportunityx-verification.onrender.com' : 'http://localhost:8000')).replace(/\/$/, '');
 const TOTP_URL = `otpauth://totp/OpportunityX%20Admin:admin@opportunityx.co.in?secret=${TOTP_SECRET}&issuer=OpportunityX%20Admin%20Registry`;
 
 export function AdminPortal({ isOpen, onClose }) {

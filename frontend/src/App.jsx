@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, useSearchParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useSearchParams, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
@@ -13,10 +13,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 function VerificationPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const { loading, result, error, searchedId, verify, reset } = useVerifyCertificate();
   const [isAdminOpen, setIsAdminOpen] = useState(false);
 
-  const queryId = searchParams.get('id');
+  // Extract ID either from ?id= query param or from pathname (e.g. /verify/OX-INT-2026-000145)
+  let queryId = searchParams.get('id');
+  if (!queryId && location.pathname && location.pathname !== '/') {
+    const pathParts = location.pathname.split('/').filter(Boolean);
+    if (pathParts.length === 2 && pathParts[0].toLowerCase() === 'verify') {
+      queryId = pathParts[1];
+    } else if (pathParts.length === 1 && pathParts[0].toLowerCase() !== 'verify') {
+      queryId = pathParts[0];
+    }
+  }
+
   const isAdminParam = searchParams.get('admin');
 
   // Open Admin portal if ?admin=true
@@ -26,7 +37,7 @@ function VerificationPage() {
     }
   }, [isAdminParam]);
 
-  // Trigger search on mount or when ?id= changes
+  // Trigger search on mount or when ID changes
   useEffect(() => {
     if (queryId && queryId.trim() && queryId !== searchedId) {
       verify(queryId);
