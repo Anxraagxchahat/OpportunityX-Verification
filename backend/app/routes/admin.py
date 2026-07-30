@@ -78,12 +78,12 @@ def verify_admin_key(x_admin_key: Optional[str] = Header(None)):
             return clean_key
 
     # Check 3: Registered Passkey credential ID
-    if clean_key in REGISTERED_PASSKEYS or clean_key == "OX-PASSKEY-BIOMETRIC-DEVICE-VERIFIED":
+    if clean_key in REGISTERED_PASSKEYS:
         return clean_key
 
     raise HTTPException(
         status_code=401,
-        detail="Unauthorized: Invalid Admin Secret Key or TOTP OTP Code."
+        detail="Unauthorized: Invalid Admin Secret Key, TOTP OTP Code, or Passkey."
     )
 
 def generate_cert_id(prefix: str = "OX-INT") -> str:
@@ -189,7 +189,7 @@ async def register_passkey(
 @router.post("/passkey/verify", summary="Verify WebAuthn Biometric Passkey")
 async def verify_passkey(payload: PasskeyVerifyRequest = Body(...)):
     cred_id = payload.credential_id
-    if cred_id in REGISTERED_PASSKEYS or cred_id == "OX-PASSKEY-BIOMETRIC-DEVICE-VERIFIED" or (cred_id and len(cred_id) >= 10):
+    if cred_id and cred_id in REGISTERED_PASSKEYS:
         return {
             "status": "valid",
             "authenticated": True,

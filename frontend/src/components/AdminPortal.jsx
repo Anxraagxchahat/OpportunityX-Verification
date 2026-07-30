@@ -89,50 +89,41 @@ export function AdminPortal({ isOpen, onClose }) {
 
   // Verify stored key on mount
   useEffect(() => {
-    if (adminKey) {
-      handleAuthenticate(adminKey);
+    const storedKey = localStorage.getItem('ox_admin_key');
+    if (storedKey) {
+      handleAuthenticate(storedKey);
     }
   }, []);
 
   const handleAuthenticate = async (keyToTest) => {
     setAuthError('');
-    const testKey = keyToTest || inputKey;
+    const testKey = (keyToTest || inputKey).trim();
 
-    if (!testKey || testKey.trim().length < 6) {
+    if (!testKey) {
       setAuthError('Please enter a valid Admin Secret Key.');
       return;
     }
 
     try {
       const res = await fetch(`${API_BASE}/api/admin/verify-key`, {
-        headers: { 'X-Admin-Key': testKey.trim() }
+        headers: { 'X-Admin-Key': testKey }
       });
 
       if (res.ok) {
         setIsAuthenticated(true);
-        setAdminKey(testKey.trim());
-        localStorage.setItem('ox_admin_key', testKey.trim());
-        fetchRegistryList(testKey.trim());
+        setAdminKey(testKey);
+        localStorage.setItem('ox_admin_key', testKey);
+        fetchRegistryList(testKey);
         fetchSecurityStatus();
       } else {
-        if (testKey.trim() === DEFAULT_KEY || testKey.trim() === 'OX-ADMIN-2026' || testKey.trim().length === 6) {
-          setIsAuthenticated(true);
-          setAdminKey(testKey.trim());
-          localStorage.setItem('ox_admin_key', testKey.trim());
-          fetchSecurityStatus();
-        } else {
-          setAuthError('Invalid Security Key or OTP. Access Denied.');
-        }
+        const errorData = await res.json().catch(() => ({}));
+        setAuthError(errorData.detail || 'Invalid Security Key. Access Denied.');
+        setIsAuthenticated(false);
+        localStorage.removeItem('ox_admin_key');
       }
     } catch (err) {
-      if (testKey.trim() === DEFAULT_KEY || testKey.trim() === 'OX-ADMIN-2026' || testKey.trim().length >= 6) {
-        setIsAuthenticated(true);
-        setAdminKey(testKey.trim());
-        localStorage.setItem('ox_admin_key', testKey.trim());
-        fetchSecurityStatus();
-      } else {
-        setAuthError('Unable to verify key.');
-      }
+      setAuthError('Unable to verify key with server.');
+      setIsAuthenticated(false);
     }
   };
 
@@ -170,100 +161,139 @@ export function AdminPortal({ isOpen, onClose }) {
         fetchRegistryList(code);
         fetchSecurityStatus();
       } else {
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         setAuthError(data.detail || 'Invalid TOTP code. Check your phone app.');
+        setIsAuthenticated(false);
+        localStorage.removeItem('ox_admin_key');
       }
     } catch (err) {
-      setIsAuthenticated(true);
-      setAdminKey(code);
-      localStorage.setItem('ox_admin_key', code);
-      fetchRegistryList(code);
-      fetchSecurityStatus();
+      setAuthError('Unable to reach server to verify TOTP code.');
+      setIsAuthenticated(false);
     }
   };
 
-  // WebAuthn Biometric Passkey Verification on Login
+  // Standard WebAuthn Biometric Passkey Verification on Login
   const handlePasskeyAuth = async () => {
     setAuthError('');
     setPasskeyVerifying(true);
-    try {
-      if (window.PublicKeyCredential) {
-        const options = {
-          publicKey: {
-            challenge: new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8, 9, 0]),
-            rp: { name: "OpportunityX Admin" },
-            user: {
-              id: new Uint8Array([1, 2, 3, 4]),
-              name: "admin@opportunityx.co.in",
-              displayName: "OpportunityX Executive Admin"
-            },
-            pubKeyCredParams: [{ alg: -7, type: "public-key" }],
-            timeout: 60000,
-            authenticatorSelection: { userVerification: "preferred" }
-          }
-        };
 
-        try {
-          const credential = await navigator.credentials.create(options);
-          if (credential) {
-            const credId = credential.id;
-            setIsAuthenticated(true);
-            setAdminKey(credId);
-            localStorage.setItem('ox_admin_key', credId);
-            fetchRegistryList(credId);
-            fetchSecurityStatus();
-            return;
-          }
-        } catch (e) {
-          const fallbackCredId = "OX-PASSKEY-BIOMETRIC-DEVICE-VERIFIED";
-          setIsAuthenticated(true);
-          setAdminKey(fallbackCredId);
-          localStorage.setItem('ox_admin_key', fallbackCredId);
-          fetchRegistryList(fallbackCredId);
-          fetchSecurityStatus();
-          return;
+    if (!window.PublicKeyCredential) {
+      setAuthError('WebAuthn / Passkeys are not supported in your browser.');
+      setPasskeyVerifying(false);
+      return;
+    }
+
+    try {
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+
+      // Triggers modern browser passkey prompt (QR code for phone, USB key, Windows Hello, Touch ID)
+      const credential = await navigator.credentials.get({
+        publicKey: {
+          challenge,
+          timeout: 60000,
+          userVerification: "preferred"
         }
+      });
+
+      if (credential && credential.id) {
+        const res = await fetch(`${API_BASE}/api/admin/passkey/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ credential_id: credential.id })
+        });
+
+        if (res.ok) {
+          setIsAuthenticated(true);
+          setAdminKey(credential.id);
+          localStorage.setItem('ox_admin_key', credential.id);
+          fetchRegistryList(credential.id);
+          fetchSecurityStatus();
+        } else {
+          const data = await res.json().catch(() => ({}));
+          setAuthError(data.detail || 'Passkey credential not recognized by backend.');
+          setIsAuthenticated(false);
+        }
+      } else {
+        setAuthError('No passkey credential received.');
       }
-      const fallbackCredId = "OX-PASSKEY-BIOMETRIC-DEVICE-VERIFIED";
-      setIsAuthenticated(true);
-      setAdminKey(fallbackCredId);
-      localStorage.setItem('ox_admin_key', fallbackCredId);
-      fetchRegistryList(fallbackCredId);
-      fetchSecurityStatus();
     } catch (err) {
-      setAuthError('Fingerprint / Passkey authentication cancelled.');
+      if (err.name === 'NotAllowedError') {
+        setAuthError('Passkey prompt cancelled or timed out.');
+      } else {
+        setAuthError(err.message || 'Biometric Passkey authentication failed.');
+      }
+      setIsAuthenticated(false);
     } finally {
       setPasskeyVerifying(false);
     }
   };
 
-  // Register Passkey Device inside Settings
+  // Standard WebAuthn Register Passkey Device inside Settings
   const handleRegisterPasskeyDevice = async () => {
     setPasskeyRegisterSuccess('');
+
+    if (!window.PublicKeyCredential) {
+      alert('WebAuthn / Passkeys are not supported in your browser.');
+      return;
+    }
+
     try {
-      const mockCredId = `OX-PASSKEY-DEVICE-${Date.now()}`;
-      const res = await fetch(`${API_BASE}/api/admin/passkey/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Admin-Key': adminKey
-        },
-        body: JSON.stringify({
-          credential_id: mockCredId,
-          device_name: "Admin Mobile / Laptop Biometric"
-        })
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+      const userId = new Uint8Array(16);
+      window.crypto.getRandomValues(userId);
+
+      // Opens browser native prompt for passkeys (Phone QR scan, Touch ID, Windows Hello, Hardware Key)
+      const credential = await navigator.credentials.create({
+        publicKey: {
+          challenge,
+          rp: { name: "OpportunityX Admin Service", id: window.location.hostname },
+          user: {
+            id: userId,
+            name: "admin@opportunityx.co.in",
+            displayName: "OpportunityX Executive Admin"
+          },
+          pubKeyCredParams: [
+            { type: "public-key", alg: -7 },   // ES256
+            { type: "public-key", alg: -257 },  // RS256
+            { type: "public-key", alg: -8 }    // Ed25519
+          ],
+          authenticatorSelection: {
+            userVerification: "preferred"
+          },
+          timeout: 60000,
+          attestation: "none"
+        }
       });
 
-      if (res.ok) {
-        setRegisteredPasskeys([...registeredPasskeys, { credential_id: mockCredId, device_name: "Admin Mobile Biometric" }]);
-        setPasskeyRegisterSuccess('Biometric Passkey registered successfully!');
-        setTimeout(() => setPasskeyRegisterSuccess(''), 3000);
+      if (credential && credential.id) {
+        const deviceLabel = navigator.userAgent.includes('Mobile') ? 'Smartphone Passkey' : 'Workstation Passkey';
+        const res = await fetch(`${API_BASE}/api/admin/passkey/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Admin-Key': adminKey
+          },
+          body: JSON.stringify({
+            credential_id: credential.id,
+            device_name: deviceLabel
+          })
+        });
+
+        if (res.ok) {
+          setRegisteredPasskeys([...registeredPasskeys, { credential_id: credential.id, device_name: deviceLabel }]);
+          setPasskeyRegisterSuccess('Biometric Passkey registered successfully!');
+          setTimeout(() => setPasskeyRegisterSuccess(''), 4000);
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          alert(errData.detail || 'Failed to register passkey with backend.');
+        }
       }
     } catch (err) {
-      const mockCredId = `OX-PASSKEY-DEVICE-${Date.now()}`;
-      setRegisteredPasskeys([...registeredPasskeys, { credential_id: mockCredId, device_name: "Admin Mobile Biometric" }]);
-      setPasskeyRegisterSuccess('Biometric Passkey registered!');
-      setTimeout(() => setPasskeyRegisterSuccess(''), 3000);
+      if (err.name !== 'NotAllowedError') {
+        alert(`Passkey Registration Error: ${err.message || 'Cancelled by user.'}`);
+      }
     }
   };
 
@@ -291,13 +321,11 @@ export function AdminPortal({ isOpen, onClose }) {
         setSetupTotpCode('');
         setTimeout(() => setTotpEnableSuccess(''), 4000);
       } else {
-        alert("Invalid code. Please enter the current 6-digit OTP from your phone app.");
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.detail || "Invalid code. Please enter the current 6-digit OTP from your phone app.");
       }
     } catch (err) {
-      setIs2faEnabled(true);
-      setTotpEnableSuccess('Google Authenticator 2FA Enabled!');
-      setSetupTotpCode('');
-      setTimeout(() => setTotpEnableSuccess(''), 4000);
+      alert("Unable to reach server to enable 2FA.");
     }
   };
 
@@ -425,13 +453,12 @@ export function AdminPortal({ isOpen, onClose }) {
         setKeyUpdateSuccess('Admin Secret Key updated successfully!');
         setNewAdminKey('');
         setTimeout(() => setKeyUpdateSuccess(''), 3000);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.detail || 'Failed to update Admin Secret Key.');
       }
     } catch (err) {
-      setAdminKey(newAdminKey.trim());
-      localStorage.setItem('ox_admin_key', newAdminKey.trim());
-      setKeyUpdateSuccess('Admin Secret Key updated locally!');
-      setNewAdminKey('');
-      setTimeout(() => setKeyUpdateSuccess(''), 3000);
+      alert('Unable to reach server to update Admin Secret Key.');
     }
   };
 
