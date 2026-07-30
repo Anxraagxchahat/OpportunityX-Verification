@@ -130,7 +130,7 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
           {/* LANDSCAPE OFFICIAL CERTIFICATE FRAME - ULTRA-CLEAN WHITE PROFESSIONAL TEMPLATE */}
           <div
             id="printable-certificate-document"
-            className="certificate-print-area relative w-full aspect-[1.414/1] bg-white text-slate-900 p-6 sm:p-8 md:p-10 rounded-xl border border-slate-300 shadow-2xl flex flex-col justify-between overflow-hidden select-none box-border"
+            className="certificate-print-area relative w-full aspect-[1.414/1] min-h-[550px] bg-white text-slate-900 p-8 sm:p-10 rounded-xl border border-slate-300 shadow-2xl flex flex-col justify-between overflow-hidden select-none box-border"
           >
             {/* L-Shaped Corner Ornaments */}
             <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-slate-900" />
@@ -139,7 +139,7 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
             <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-slate-900" />
 
             {/* Header Brand & Certificate ID Row */}
-            <div className="flex items-start justify-between border-b border-slate-200 pb-2 z-10">
+            <div className="flex items-start justify-between border-b border-slate-200 pb-3 z-10">
               <div className="flex items-center gap-3">
                 <img src="/favicon.png" alt="OpportunityX" className="w-10 h-10 sm:w-11 sm:h-11 object-contain" />
                 <div>
@@ -167,29 +167,31 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
             </div>
 
             {/* Prominent Central Certificate Body */}
-            <div className="text-center my-auto py-1 z-10 space-y-2">
+            <div className="text-center my-auto py-2 z-10 space-y-3">
               <p className="text-xs font-bold tracking-[0.25em] text-slate-600 uppercase">
                 THIS IS TO CERTIFY THAT
               </p>
 
-              {/* Recipient Name with Clean Underline (Using CSS Border-b-2) */}
-              <div className="inline-block border-b-2 border-slate-900 pb-1 px-8 mb-1">
-                <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight">
-                  {recipient}
-                </h2>
+              {/* Recipient Name with Clean Underline (Explicit Line-Height & Bottom Padding) */}
+              <div className="flex justify-center my-1">
+                <div className="border-b-2 border-slate-900 pb-3 px-12 inline-block">
+                  <span className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-normal block">
+                    {recipient}
+                  </span>
+                </div>
               </div>
 
-              <p className="text-xs sm:text-sm text-slate-600 max-w-2xl mx-auto pt-0.5 font-medium">
+              <p className="text-xs sm:text-sm text-slate-600 max-w-2xl mx-auto pt-1 font-medium">
                 has successfully completed all official requirements for the <strong className="text-slate-900">{type_label}</strong> in
               </p>
 
               {/* Role Title */}
-              <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+              <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-snug">
                 {role}
               </h3>
 
               {/* DURATION, ISSUED DATE, ISSUED BY METADATA ROW */}
-              <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-12 pt-2 pb-1">
+              <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-12 pt-3 pb-1">
                 {/* Duration */}
                 <div className="flex items-center gap-2.5 text-left">
                   <Clock size={22} className="text-slate-800 shrink-0 stroke-[1.5]" />
@@ -224,7 +226,7 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
 
               {/* VERIFIED COMPETENCIES */}
               {details.skills_verified && details.skills_verified.length > 0 && (
-                <div className="space-y-1 pt-0.5">
+                <div className="space-y-1 pt-1">
                   <span className="text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase block">
                     VERIFIED COMPETENCIES
                   </span>
@@ -243,7 +245,7 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
             </div>
 
             {/* STANDALONE VERIFICATION BANNER */}
-            <div className="flex items-center justify-center gap-3 my-1 z-10 w-full px-2">
+            <div className="flex items-center justify-center gap-3 my-2 z-10 w-full px-2">
               <div className="h-px bg-slate-300 flex-1" />
               <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium">
                 <ShieldCheck size={14} className="text-slate-900" />
@@ -253,10 +255,10 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
             </div>
 
             {/* Footer Signatures, QR Code & Seal */}
-            <div className="flex items-center justify-between border-t border-slate-200 pt-2 z-10">
+            <div className="flex items-center justify-between border-t border-slate-200 pt-3 z-10 pb-1">
               
               {/* QR Verification Box */}
-              <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+              <div className="flex items-center gap-2.5 bg-slate-50 p-2 rounded-lg border border-slate-200">
                 <div className="p-1 bg-white rounded border border-slate-300 shrink-0">
                   <QRCodeSVG value={url} size={48} level="M" fgColor="#0F172A" />
                 </div>
@@ -281,7 +283,7 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
 
               {/* Authority Signature Image */}
               <div className="text-right space-y-0.5">
-                <div className="h-9 sm:h-10 flex items-center justify-end">
+                <div className="h-10 flex items-center justify-end">
                   <img
                     src="/signature_dark.png"
                     alt="OpportunityX Executive Signature"
@@ -289,9 +291,9 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
                   />
                 </div>
                 <div className="h-px w-36 bg-slate-300 ml-auto my-0.5" />
-                <p className="text-[10px] font-bold text-slate-900 leading-none">Digitally Signed</p>
-                <p className="text-[9px] text-slate-600 font-medium leading-none">OpportunityX Verification Registry</p>
-                <p className="text-[8px] font-mono text-slate-500 truncate max-w-[170px] leading-tight">
+                <p className="text-[10px] font-bold text-slate-900 leading-normal">Digitally Signed</p>
+                <p className="text-[9px] text-slate-600 font-medium leading-normal">OpportunityX Verification Registry</p>
+                <p className="text-[8px] font-mono text-slate-500 max-w-[180px] ml-auto leading-normal">
                   Signature Hash: {digital_signature.slice(0, 20)}...
                 </p>
               </div>
