@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Header, Depends, Body
 from pydantic import BaseModel, Field
 
 from app.database import db
-from app.models.certificate import CertificateRecord, CertificateStatus
+from app.models.certificate import CertificateRecord, CertificateStatus, CertificateType
 from app.seed_data import SEED_CERTIFICATES
 
 router = APIRouter(prefix="/api/admin", tags=["Admin Management"])
@@ -221,30 +221,27 @@ async def issue_certificate(
 ):
     cert_id = generate_cert_id(payload.prefix)
     digital_sig = generate_digital_signature(cert_id, payload.recipient, payload.role)
-    current_time = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
+    current_time = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+    email_prefix = payload.recipient[0].lower() if payload.recipient else "s"
+    cert_type = CertificateType.INTERNSHIP if "INT" in payload.prefix.upper() else CertificateType.CAREER
 
     new_record = CertificateRecord(
         certificate_id=cert_id,
-        status=CertificateStatus.VALID,
-        recipient=payload.recipient,
-        type_label=payload.type_label,
+        certificate_type=cert_type,
+        recipient_name=payload.recipient,
+        recipient_email_masked=f"{email_prefix}******@opportunityx.co.in",
         role=payload.role,
-        duration=payload.duration,
         issued_date=payload.issued_date,
-        issued_by=payload.issued_by,
+        duration=payload.duration,
+        status=CertificateStatus.VALID,
+        verification_url=f"https://verify.opportunityx.co.in/?id={cert_id}",
+        qr_url=f"https://verify.opportunityx.co.in/?id={cert_id}",
         digital_signature=digital_sig,
-        verification_timestamp=current_time,
-        details={
-            "skills_verified": payload.skills_verified,
-            "completion_score": "98%",
-            "issuer_authority": payload.issued_by
-        },
-        metadata={
-            "digital_signature_status": "Cryptographically Validated (ECDSA-256)",
-            "qr_status": "Verified & Tamper-Evident",
-            "verification_standard": "W3C Verifiable Credentials Standard v1.1"
-        },
-        verification_url=f"https://verify.opportunityx.co.in/?id={cert_id}"
+        skills_verified=payload.skills_verified,
+        performance_score="Top Distinction",
+        created_at=current_time,
+        updated_at=current_time
     )
 
     db.add_certificate(new_record)
