@@ -236,16 +236,41 @@ class CertificateDatabase:
     def revoke_certificate(self, certificate_id: str) -> bool:
         clean_id = certificate_id.strip().upper()
         
-        # Update in memory
-        if clean_id in SEED_CERTIFICATES:
-            SEED_CERTIFICATES[clean_id].status = CertificateStatus.REVOKED
+        record = self.get_certificate(clean_id)
+        if not record:
+            return False
 
-        # Update in SQLite
+        record.status = CertificateStatus.REVOKED
+        record.revocation_reason = "Certificate revoked by administrative authority."
+        SEED_CERTIFICATES[clean_id] = record
+
+        # Update in SQLite with updated data_json blob
         try:
+            record_dict = record.dict()
+            data_json = json.dumps(record_dict)
             with sqlite3.connect(DB_PATH) as conn:
                 cursor = conn.cursor()
-                cursor.execute("UPDATE certificates SET status = ? WHERE certificate_id = ?", (CertificateStatus.REVOKED.value, clean_id))
+                cursor.execute("""
+                    INSERT OR REPLACE INTO certificates (
+                        certificate_id, status, recipient, type_label, role,
+                        duration, issued_date, issued_by, digital_signature,
+                        verification_timestamp, data_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    clean_id,
+                    record.status.value,
+                    record.recipient_name,
+                    record.certificate_type.value,
+                    record.role,
+                    record.duration,
+                    record.issued_date,
+                    "OpportunityX",
+                    record.digital_signature,
+                    record.created_at,
+                    data_json
+                ))
                 conn.commit()
+            logger.info(f"Certificate {clean_id} status updated to REVOKED in SQLite database.")
         except Exception as e:
             logger.error(f"Error revoking in SQLite: {e}")
 
@@ -253,13 +278,11 @@ class CertificateDatabase:
         if self.firestore_db:
             try:
                 doc_ref = self.firestore_db.collection("certificates").document(clean_id)
-                doc_ref.update({"status": CertificateStatus.REVOKED.value})
-                return True
+                doc_ref.set(record.dict())
             except Exception as e:
                 logger.error(f"Error revoking in Firestore: {e}")
-                return False
 
-        return clean_id in SEED_CERTIFICATES
+        return True
 
 db = CertificateDatabase()
 

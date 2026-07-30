@@ -10,18 +10,16 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
 
   if (!isOpen || !data) return null;
 
-  const {
-    certificate_id,
-    type_label = 'Internship Certificate',
-    recipient = 'Recipient Name',
-    role = 'Software Engineering Intern',
-    duration = '6 Months',
-    issued_date = 'June 15, 2026',
-    issued_by = 'OpportunityX',
-    digital_signature = '0x4f8a92b1c3d4e5f67890abcd1234ef567890abcd',
-    verification_url = '',
-    details = {}
-  } = data;
+  const certificate_id = data.certificate_id;
+  const recipient = data.recipient || data.recipient_name || 'Recipient Name';
+  const type_label = data.type_label || (typeof data.certificate_type === 'string' ? data.certificate_type : data.certificate_type?.value) || 'Internship Certificate';
+  const role = data.role || 'Software Engineering Intern';
+  const duration = data.duration || '6 Months';
+  const issued_date = data.issued_date || 'June 15, 2026';
+  const issued_by = data.issued_by || 'OpportunityX';
+  const digital_signature = data.digital_signature || '0x4f8a92b1c3d4e5f67890abcd1234ef567890abcd';
+  const verification_url = data.verification_url || '';
+  const skillsList = data.details?.skills_verified || data.skills_verified || [];
 
   const url = verification_url || `https://verify.opportunityx.co.in/?id=${certificate_id}`;
 
@@ -229,16 +227,16 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
               </div>
 
               {/* VERIFIED COMPETENCIES */}
-              {details.skills_verified && details.skills_verified.length > 0 && (
+              {skillsList && skillsList.length > 0 && (
                 <div className="space-y-1 pt-1">
                   <span className="text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase block">
                     VERIFIED COMPETENCIES
                   </span>
                   <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs font-semibold text-slate-800">
-                    {details.skills_verified.map((skill, idx) => (
+                    {skillsList.map((skill, idx) => (
                       <React.Fragment key={idx}>
                         <span className="font-semibold">{skill}</span>
-                        {idx < details.skills_verified.length - 1 && (
+                        {idx < skillsList.length - 1 && (
                           <span className="text-slate-400 font-normal select-none">|</span>
                         )}
                       </React.Fragment>
