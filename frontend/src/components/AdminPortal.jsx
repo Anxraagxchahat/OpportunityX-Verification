@@ -35,7 +35,7 @@ const API_BASE = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https
 const TOTP_URL = `otpauth://totp/OpportunityX%20Admin:admin@opportunityx.co.in?secret=${TOTP_SECRET}&issuer=OpportunityX%20Admin%20Registry`;
 
 export function AdminPortal({ isOpen, onClose }) {
-  const [adminKey, setAdminKey] = useState(() => localStorage.getItem('ox_admin_key') || DEFAULT_KEY);
+  const [adminKey, setAdminKey] = useState(DEFAULT_KEY);
   const [inputKey, setInputKey] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authError, setAuthError] = useState('');
@@ -87,12 +87,19 @@ export function AdminPortal({ isOpen, onClose }) {
   const [totpEnableSuccess, setTotpEnableSuccess] = useState('');
   const [passkeyRegisterSuccess, setPasskeyRegisterSuccess] = useState('');
 
-  // Verify stored key on mount
+  // Explicit session logout / lock
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setAdminKey(DEFAULT_KEY);
+    setInputKey('');
+    setTotpCode('');
+    setAuthError('');
+    setIssuedResult(null);
+  };
+
+  // Lock portal session on initial load or modal close
   useEffect(() => {
-    const storedKey = localStorage.getItem('ox_admin_key');
-    if (storedKey) {
-      handleAuthenticate(storedKey);
-    }
+    handleLogout();
   }, []);
 
   const handleAuthenticate = async (keyToTest) => {
@@ -112,14 +119,12 @@ export function AdminPortal({ isOpen, onClose }) {
       if (res.ok) {
         setIsAuthenticated(true);
         setAdminKey(testKey);
-        localStorage.setItem('ox_admin_key', testKey);
         fetchRegistryList(testKey);
         fetchSecurityStatus();
       } else {
         const errorData = await res.json().catch(() => ({}));
         setAuthError(errorData.detail || 'Invalid Security Key. Access Denied.');
         setIsAuthenticated(false);
-        localStorage.removeItem('ox_admin_key');
       }
     } catch (err) {
       setAuthError('Unable to verify key with server.');
@@ -157,14 +162,12 @@ export function AdminPortal({ isOpen, onClose }) {
       if (res.ok) {
         setIsAuthenticated(true);
         setAdminKey(code);
-        localStorage.setItem('ox_admin_key', code);
         fetchRegistryList(code);
         fetchSecurityStatus();
       } else {
         const data = await res.json().catch(() => ({}));
         setAuthError(data.detail || 'Invalid TOTP code. Check your phone app.');
         setIsAuthenticated(false);
-        localStorage.removeItem('ox_admin_key');
       }
     } catch (err) {
       setAuthError('Unable to reach server to verify TOTP code.');
@@ -206,7 +209,6 @@ export function AdminPortal({ isOpen, onClose }) {
         if (res.ok) {
           setIsAuthenticated(true);
           setAdminKey(credential.id);
-          localStorage.setItem('ox_admin_key', credential.id);
           fetchRegistryList(credential.id);
           fetchSecurityStatus();
         } else {
@@ -449,8 +451,7 @@ export function AdminPortal({ isOpen, onClose }) {
 
       if (res.ok) {
         setAdminKey(newAdminKey.trim());
-        localStorage.setItem('ox_admin_key', newAdminKey.trim());
-        setKeyUpdateSuccess('Admin Secret Key updated successfully!');
+        setKeyUpdateSuccess('Admin Secret Key updated successfully on server!');
         setNewAdminKey('');
         setTimeout(() => setKeyUpdateSuccess(''), 3000);
       } else {
@@ -505,12 +506,30 @@ export function AdminPortal({ isOpen, onClose }) {
               </div>
             </div>
 
-            <button
-              onClick={onClose}
-              className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 transition-colors"
-            >
-              ✕
-            </button>
+            <div className="flex items-center gap-2">
+              {isAuthenticated && (
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 font-semibold text-xs flex items-center gap-1.5 transition-all"
+                  title="Lock Admin Session"
+                >
+                  <Lock size={13} />
+                  <span>Lock & Logout</span>
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  handleLogout();
+                  onClose();
+                }}
+                className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 transition-colors"
+                title="Close Portal"
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           {/* SECURE LOCK SCREEN */}
