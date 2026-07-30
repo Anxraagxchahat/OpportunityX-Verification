@@ -617,11 +617,6 @@ export function AdminPortal({ isOpen, onClose }) {
                   >
                     Authenticate & Unlock Portal
                   </button>
-
-                  <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80 text-[11px] font-mono text-slate-400">
-                    <span>Default Key: </span>
-                    <span className="text-amber-400 font-bold select-all">{DEFAULT_KEY}</span>
-                  </div>
                 </div>
               )}
 
