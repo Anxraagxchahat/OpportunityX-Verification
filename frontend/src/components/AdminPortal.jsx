@@ -117,9 +117,11 @@ export function AdminPortal({ isOpen, onClose }) {
       });
 
       if (res.ok) {
+        const data = await res.json();
+        const activeKey = data.admin_key || testKey;
         setIsAuthenticated(true);
-        setAdminKey(testKey);
-        fetchRegistryList(testKey);
+        setAdminKey(activeKey);
+        fetchRegistryList(activeKey);
         fetchSecurityStatus();
       } else {
         const errorData = await res.json().catch(() => ({}));
@@ -160,9 +162,11 @@ export function AdminPortal({ isOpen, onClose }) {
       });
 
       if (res.ok) {
+        const data = await res.json();
+        const activeKey = data.admin_key || code;
         setIsAuthenticated(true);
-        setAdminKey(code);
-        fetchRegistryList(code);
+        setAdminKey(activeKey);
+        fetchRegistryList(activeKey);
         fetchSecurityStatus();
       } else {
         const data = await res.json().catch(() => ({}));
@@ -207,9 +211,11 @@ export function AdminPortal({ isOpen, onClose }) {
         });
 
         if (res.ok) {
+          const data = await res.json();
+          const activeKey = data.admin_key || credential.id;
           setIsAuthenticated(true);
-          setAdminKey(credential.id);
-          fetchRegistryList(credential.id);
+          setAdminKey(activeKey);
+          fetchRegistryList(activeKey);
           fetchSecurityStatus();
         } else {
           const data = await res.json().catch(() => ({}));
@@ -450,8 +456,10 @@ export function AdminPortal({ isOpen, onClose }) {
       });
 
       if (res.ok) {
-        setAdminKey(newAdminKey.trim());
-        setKeyUpdateSuccess('Admin Secret Key updated successfully on server!');
+        const resData = await res.json();
+        const updatedKey = resData.admin_key || newAdminKey.trim();
+        setAdminKey(updatedKey);
+        setKeyUpdateSuccess('Admin Secret Key permanently updated in database!');
         setNewAdminKey('');
         setTimeout(() => setKeyUpdateSuccess(''), 3000);
       } else {

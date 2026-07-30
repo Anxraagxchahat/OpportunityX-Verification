@@ -111,7 +111,8 @@ def generate_digital_signature(cert_id: str, recipient: str, role: str) -> str:
 
 @router.get("/verify-key", summary="Validate Admin Secret Key / TOTP / Passkey")
 async def verify_key(admin_key: str = Depends(verify_admin_key)):
-    return {"status": "valid", "authenticated": True, "message": "Admin Access Granted."}
+    current_key = get_current_admin_key()
+    return {"status": "valid", "authenticated": True, "admin_key": current_key, "message": "Admin Access Granted."}
 
 @router.get("/security/status", summary="Get 2FA and Security Status")
 async def security_status():
@@ -154,11 +155,13 @@ async def totp_verify(payload: TotpVerifyRequest = Body(...)):
 
     totp_secret = get_current_totp_secret()
     totp = pyotp.TOTP(totp_secret)
-    if totp.verify(code, valid_window=1):
+    if totp.verify(code, valid_window=2):
+        current_key = get_current_admin_key()
         return {
             "status": "valid",
             "authenticated": True,
             "token": code,
+            "admin_key": current_key,
             "message": "Google Authenticator OTP verified successfully!"
         }
     else:
@@ -172,7 +175,7 @@ async def totp_enable(
     code = payload.code.strip()
     totp_secret = get_current_totp_secret()
     totp = pyotp.TOTP(totp_secret)
-    if totp.verify(code, valid_window=1):
+    if totp.verify(code, valid_window=2):
         db.set_setting("is_2fa_enabled", "true")
         return {"status": "success", "message": "Google Authenticator 2FA is now ACTIVE and verified!"}
     raise HTTPException(status_code=400, detail="Verification code invalid. 2FA not activated.")
@@ -203,10 +206,12 @@ async def register_passkey(
 async def verify_passkey(payload: PasskeyVerifyRequest = Body(...)):
     cred_id = payload.credential_id
     if cred_id and (cred_id in REGISTERED_PASSKEYS or db.is_passkey_valid(cred_id)):
+        current_key = get_current_admin_key()
         return {
             "status": "valid",
             "authenticated": True,
             "token": cred_id,
+            "admin_key": current_key,
             "message": "Biometric Passkey Verified Successfully!"
         }
     raise HTTPException(status_code=401, detail="Passkey verification failed or device not recognized.")
@@ -223,6 +228,7 @@ async def update_key(
     db.set_setting("admin_key", new_key_clean)
     return {
         "status": "success",
+        "admin_key": new_key_clean,
         "message": "Admin Secret Key permanently updated in database.",
         "key_length": len(new_key_clean)
     }
