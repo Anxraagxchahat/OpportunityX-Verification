@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { X, Printer, Download, ShieldCheck, Award, Calendar, Building2, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import html2pdf from 'html2pdf.js';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 export function CertificateViewerModal({ isOpen, onClose, data }) {
   const [downloading, setDownloading] = useState(false);
@@ -34,28 +35,33 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
 
     setDownloading(true);
 
-    const opt = {
-      margin: 0,
-      filename: `${certificate_id}_OpportunityX_Certificate.pdf`,
-      image: { type: 'jpeg', quality: 1.0 },
-      html2canvas: { 
-        scale: 2, 
-        useCORS: true, 
+    try {
+      // 1. Capture the actual rendered DOM element directly at 300 DPI high resolution
+      const canvas = await html2canvas(element, {
+        scale: 3,
+        useCORS: true,
+        allowTaint: true,
         backgroundColor: '#FFFFFF',
         logging: false,
         scrollX: 0,
         scrollY: 0
-      },
-      jsPDF: { 
-        unit: 'mm', 
-        format: 'a4', 
-        orientation: 'landscape',
-        compress: true
-      }
-    };
+      });
 
-    try {
-      await html2pdf().set(opt).from(element).save();
+      const imgData = canvas.toDataURL('image/png', 1.0);
+
+      // 2. Create A4 Landscape PDF (297mm x 210mm)
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4',
+        compress: true
+      });
+
+      // 3. Render image onto exact 297mm x 210mm page bounds
+      pdf.addImage(imgData, 'PNG', 0, 0, 297, 210, undefined, 'FAST');
+
+      // 4. Save file
+      pdf.save(`${certificate_id}_OpportunityX_Certificate.pdf`);
     } catch (err) {
       console.error('PDF download error:', err);
     } finally {
