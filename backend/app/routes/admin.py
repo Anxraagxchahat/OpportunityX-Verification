@@ -77,8 +77,8 @@ def verify_admin_key(x_admin_key: Optional[str] = Header(None)):
         if totp.verify(clean_key, valid_window=1):
             return clean_key
 
-    # Check 3: Registered Passkey credential ID
-    if clean_key in REGISTERED_PASSKEYS:
+    # Check 3: Registered Passkey credential ID (Memory or Persistent DB)
+    if clean_key in REGISTERED_PASSKEYS or db.is_passkey_valid(clean_key):
         return clean_key
 
     raise HTTPException(
@@ -109,6 +109,7 @@ async def verify_key(admin_key: str = Depends(verify_admin_key)):
 @router.get("/security/status", summary="Get 2FA and Security Status")
 async def security_status():
     totp = pyotp.TOTP(TOTP_SECRET)
+    passkeys = db.list_passkeys()
     return {
         "status": "success",
         "is_2fa_enabled": IS_2FA_ENABLED,
@@ -117,8 +118,8 @@ async def security_status():
             name="admin@opportunityx.co.in",
             issuer_name="OpportunityX Admin Registry"
         ),
-        "passkeys_count": len(REGISTERED_PASSKEYS),
-        "registered_passkeys": list(REGISTERED_PASSKEYS.values())
+        "passkeys_count": len(passkeys),
+        "registered_passkeys": passkeys
     }
 
 @router.get("/totp/setup", summary="Get Google Authenticator TOTP Setup QR Code")
@@ -173,23 +174,24 @@ async def register_passkey(
     if not payload.credential_id:
         raise HTTPException(status_code=400, detail="Missing credential_id")
     
-    REGISTERED_PASSKEYS[payload.credential_id] = {
-        "credential_id": payload.credential_id,
-        "public_key": payload.public_key,
-        "device_name": payload.device_name,
-        "registered_at": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
-    }
+    passkey_obj = db.add_passkey(
+        credential_id=payload.credential_id,
+        device_name=payload.device_name or "Mobile / Biometric Passkey",
+        public_key=payload.public_key
+    )
+    REGISTERED_PASSKEYS[payload.credential_id] = passkey_obj
+
     return {
         "status": "success",
-        "message": f"Device Passkey '{payload.device_name}' registered successfully!",
+        "message": f"Device Passkey '{payload.device_name}' registered and permanently saved!",
         "credential_id": payload.credential_id,
-        "total_passkeys": len(REGISTERED_PASSKEYS)
+        "total_passkeys": len(db.list_passkeys())
     }
 
 @router.post("/passkey/verify", summary="Verify WebAuthn Biometric Passkey")
 async def verify_passkey(payload: PasskeyVerifyRequest = Body(...)):
     cred_id = payload.credential_id
-    if cred_id and cred_id in REGISTERED_PASSKEYS:
+    if cred_id and (cred_id in REGISTERED_PASSKEYS or db.is_passkey_valid(cred_id)):
         return {
             "status": "valid",
             "authenticated": True,

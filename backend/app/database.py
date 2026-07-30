@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import sqlite3
 import logging
 from typing import Optional, List
@@ -42,10 +43,68 @@ class CertificateDatabase:
                         data_json TEXT
                     )
                 """)
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS passkeys (
+                        credential_id TEXT PRIMARY KEY,
+                        device_name TEXT,
+                        public_key TEXT,
+                        registered_at TEXT
+                    )
+                """)
                 conn.commit()
             logger.info(f"SQLite persistent database ready at: {DB_PATH}")
         except Exception as e:
             logger.error(f"Failed to initialize SQLite database: {e}")
+
+    def add_passkey(self, credential_id: str, device_name: str = "Registered Device", public_key: str = None) -> dict:
+        clean_id = credential_id.strip()
+        registered_at = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
+        try:
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    INSERT OR REPLACE INTO passkeys (credential_id, device_name, public_key, registered_at)
+                    VALUES (?, ?, ?, ?)
+                """, (clean_id, device_name, public_key or "", registered_at))
+                conn.commit()
+            logger.info(f"Passkey {clean_id[:12]}... saved to SQLite database.")
+        except Exception as e:
+            logger.error(f"Error saving passkey to SQLite: {e}")
+
+        return {
+            "credential_id": clean_id,
+            "device_name": device_name,
+            "public_key": public_key,
+            "registered_at": registered_at
+        }
+
+    def is_passkey_valid(self, credential_id: str) -> bool:
+        clean_id = credential_id.strip()
+        if not clean_id:
+            return False
+        try:
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT credential_id FROM passkeys WHERE credential_id = ?", (clean_id,))
+                row = cursor.fetchone()
+                return row is not None
+        except Exception as e:
+            logger.error(f"Error validating passkey in SQLite: {e}")
+            return False
+
+    def list_passkeys(self) -> List[dict]:
+        try:
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT credential_id, device_name, registered_at FROM passkeys")
+                rows = cursor.fetchall()
+                return [
+                    {"credential_id": r[0], "device_name": r[1], "registered_at": r[2]}
+                    for r in rows
+                ]
+        except Exception as e:
+            logger.error(f"Error listing passkeys from SQLite: {e}")
+            return []
 
     def _load_sqlite_records(self):
         """Load persistent records into memory index on startup."""
