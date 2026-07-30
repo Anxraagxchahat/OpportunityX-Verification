@@ -167,21 +167,20 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
             </div>
 
             {/* Prominent Central Certificate Body */}
-            <div className="text-center my-auto py-2 z-10 space-y-3">
+            <div className="text-center my-auto py-1 z-10 space-y-2.5">
               <p className="text-xs font-bold tracking-[0.25em] text-slate-600 uppercase">
                 THIS IS TO CERTIFY THAT
               </p>
 
-              {/* Recipient Name with Clean Underline (Explicit Line-Height & Bottom Padding) */}
-              <div className="flex justify-center my-1">
-                <div className="border-b-2 border-slate-900 pb-3 px-12 inline-block">
-                  <span className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-normal block">
-                    {recipient}
-                  </span>
-                </div>
+              {/* Recipient Name with Separate HTML Line Element */}
+              <div className="flex flex-col items-center justify-center my-1">
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
+                  {recipient}
+                </h2>
+                <div className="w-72 sm:w-96 h-0.5 bg-slate-900 mt-2.5" />
               </div>
 
-              <p className="text-xs sm:text-sm text-slate-600 max-w-2xl mx-auto pt-1 font-medium">
+              <p className="text-xs sm:text-sm text-slate-600 max-w-2xl mx-auto pt-0.5 font-medium">
                 has successfully completed all official requirements for the <strong className="text-slate-900">{type_label}</strong> in
               </p>
 
@@ -191,7 +190,7 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
               </h3>
 
               {/* DURATION, ISSUED DATE, ISSUED BY METADATA ROW */}
-              <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-12 pt-3 pb-1">
+              <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-12 pt-2 pb-1">
                 {/* Duration */}
                 <div className="flex items-center gap-2.5 text-left">
                   <Clock size={22} className="text-slate-800 shrink-0 stroke-[1.5]" />
@@ -226,7 +225,7 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
 
               {/* VERIFIED COMPETENCIES */}
               {details.skills_verified && details.skills_verified.length > 0 && (
-                <div className="space-y-1 pt-1">
+                <div className="space-y-1 pt-0.5">
                   <span className="text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase block">
                     VERIFIED COMPETENCIES
                   </span>
@@ -242,20 +241,20 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
                   </div>
                 </div>
               )}
-            </div>
 
-            {/* STANDALONE VERIFICATION BANNER */}
-            <div className="flex items-center justify-center gap-3 my-2 z-10 w-full px-2">
-              <div className="h-px bg-slate-300 flex-1" />
-              <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium">
-                <ShieldCheck size={14} className="text-slate-900" />
-                <span>Verify this credential anytime at <strong className="text-slate-900 font-bold font-mono">verify.opportunityx.co.in</strong></span>
+              {/* STANDALONE VERIFICATION BANNER (SHIFTED UP INTO BODY) */}
+              <div className="flex items-center justify-center gap-3 pt-2 pb-0.5 z-10 w-full px-2">
+                <div className="h-px bg-slate-300 flex-1" />
+                <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium">
+                  <ShieldCheck size={14} className="text-slate-900" />
+                  <span>Verify this credential anytime at <strong className="text-slate-900 font-bold font-mono">verify.opportunityx.co.in</strong></span>
+                </div>
+                <div className="h-px bg-slate-300 flex-1" />
               </div>
-              <div className="h-px bg-slate-300 flex-1" />
             </div>
 
             {/* Footer Signatures, QR Code & Seal */}
-            <div className="flex items-center justify-between border-t border-slate-200 pt-3 z-10 pb-1">
+            <div className="flex items-center justify-between border-t border-slate-200 pt-2.5 z-10 pb-0.5">
               
               {/* QR Verification Box */}
               <div className="flex items-center gap-2.5 bg-slate-50 p-2 rounded-lg border border-slate-200">
