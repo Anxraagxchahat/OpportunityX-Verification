@@ -139,33 +139,33 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
             <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-slate-900" />
 
             {/* Header Brand & Certificate ID Row */}
-            <div className="flex items-center justify-between border-b border-slate-200 pb-3 z-10">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-row items-center justify-between border-b border-slate-200 pb-3 z-10">
+              <div className="flex flex-row items-center gap-3">
                 <img
                   src="/favicon.png"
                   alt="OpportunityX"
                   className="w-10 h-10 sm:w-11 sm:h-11 object-contain shrink-0"
-                  style={{ display: 'block' }}
+                  style={{ display: 'block', verticalAlign: 'middle' }}
                 />
                 <div className="flex flex-col justify-center">
-                  <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 leading-none">
+                  <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 leading-none m-0 p-0">
                     Opportunity<span className="text-orange-500">X</span>
                   </h1>
-                  <p className="text-[10px] text-slate-600 uppercase tracking-widest font-bold mt-1 leading-none">
+                  <p className="text-[10px] text-slate-600 uppercase tracking-widest font-bold mt-1 leading-none p-0">
                     GLOBAL STUDENT CAREER OS
                   </p>
                 </div>
               </div>
 
-              <div className="text-right space-y-1">
+              <div className="text-right flex flex-col justify-center space-y-1">
                 <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none">
                   CERTIFICATE ID
                 </div>
                 <div className="text-xs sm:text-sm font-mono font-black text-slate-900 leading-none">
                   {certificate_id}
                 </div>
-                <div className="flex items-center justify-end gap-1.5 text-[10px] font-mono text-slate-600 font-bold leading-none pt-0.5">
-                  <ShieldCheck size={12} className="text-slate-800 shrink-0" style={{ display: 'inline-block', verticalAlign: 'middle' }} />
+                <div className="flex flex-row items-center justify-end gap-1.5 text-[10px] font-mono text-slate-600 font-bold leading-none pt-0.5">
+                  <ShieldCheck size={12} className="text-slate-800 shrink-0" style={{ display: 'inline-block', verticalAlign: 'middle', marginTop: '-1px' }} />
                   <span style={{ display: 'inline-block', verticalAlign: 'middle' }}>VERIFIED  |  SECURE  |  AUTHENTIC</span>
                 </div>
               </div>
@@ -177,17 +177,12 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
                 THIS IS TO CERTIFY THAT
               </p>
 
-              {/* Recipient Name with Absolute Bottom Underline Line (16px Below Text) */}
-              <div className="flex justify-center my-2">
-                <div className="relative inline-block px-12 pb-4">
-                  <span className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-none block">
-                    {recipient}
-                  </span>
-                  <div
-                    className="absolute bottom-0 left-1/2 -translate-x-1/2 bg-slate-900"
-                    style={{ width: '80%', height: '2px' }}
-                  />
-                </div>
+              {/* Recipient Name with Dedicated Centered Border Line Block */}
+              <div className="text-center my-2">
+                <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-normal m-0 p-0">
+                  {recipient}
+                </h2>
+                <div style={{ width: '360px', borderBottom: '2px solid #0F172A', margin: '8px auto 0 auto' }} />
               </div>
 
               <p className="text-xs sm:text-sm text-slate-600 max-w-2xl mx-auto pt-1 font-medium">
@@ -253,14 +248,15 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
               )}
             </div>
 
-            {/* STANDALONE VERIFICATION BANNER - POSITIONED JUST ABOVE FOOTER LINE */}
-            <div className="flex items-center justify-center gap-3 mt-auto mb-2 z-10 w-full px-2">
-              <div className="h-px bg-slate-300 flex-1" />
-              <div className="flex items-center gap-1.5 text-xs text-slate-700 font-medium">
-                <ShieldCheck size={14} className="text-slate-900 shrink-0" style={{ display: 'inline-block', verticalAlign: 'middle' }} />
+            {/* STANDALONE VERIFICATION BANNER - DEAD CENTER OVER SEPARATOR LINE */}
+            <div className="relative flex items-center justify-center mt-auto mb-3 z-10 w-full">
+              <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                <div className="w-full border-t border-slate-300" />
+              </div>
+              <div className="relative flex items-center gap-1.5 bg-white px-4 text-xs text-slate-700 font-medium z-10">
+                <ShieldCheck size={14} className="text-slate-900 shrink-0" style={{ display: 'inline-block', verticalAlign: 'middle', marginTop: '-1px' }} />
                 <span>Verify this credential anytime at <strong className="text-slate-900 font-bold font-mono">verify.opportunityx.co.in</strong></span>
               </div>
-              <div className="h-px bg-slate-300 flex-1" />
             </div>
 
             {/* Footer Signatures, QR Code & Seal */}
