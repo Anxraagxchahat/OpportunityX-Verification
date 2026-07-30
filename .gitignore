@@ -1,0 +1,67 @@
+# Environment Variables & Secrets
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.pfx
+*.p12
+*.secret
+credentials.json
+service-account*.json
+firebase-key*.json
+firebase-credentials.json
+
+# Node.js & Dependency Directories
+node_modules/
+frontend/node_modules/
+package-lock.json.bak
+
+# Build & Output Artifacts
+dist/
+frontend/dist/
+build/
+.vite/
+.next/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Python & Virtual Environments
+__pycache__/
+*/__pycache__/
+*/*/__pycache__/
+*.py[cod]
+*$py.class
+venv/
+backend/venv/
+.venv/
+env/
+ENV/
+*.db
+*.sqlite
+*.sqlite3
+.pytest_cache/
+.coverage
+htmlcov/
+.python-version
+
+# IDE & Editor Files
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+.gemini/
