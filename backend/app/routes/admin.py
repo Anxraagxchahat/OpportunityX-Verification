@@ -56,9 +56,13 @@ class PasskeyVerifyRequest(BaseModel):
     client_data_json: Optional[str] = None
     signature: Optional[str] = None
 
+def get_current_admin_key() -> str:
+    return db.get_setting("admin_key", os.getenv("OX_ADMIN_KEY", "OX-SECURE-ADMIN-2026-9f8a3c7b1e4d0258"))
+
+def get_current_totp_secret() -> str:
+    return db.get_setting("totp_secret", os.getenv("OX_TOTP_SECRET", "JBSWY3DPEHPK3PXP"))
+
 def verify_admin_key(x_admin_key: Optional[str] = Header(None)):
-    global CURRENT_ADMIN_KEY, TOTP_SECRET, REGISTERED_PASSKEYS
-    
     if not x_admin_key:
         raise HTTPException(
             status_code=401,
@@ -66,14 +70,16 @@ def verify_admin_key(x_admin_key: Optional[str] = Header(None)):
         )
     
     clean_key = x_admin_key.strip()
+    current_key = get_current_admin_key()
+    totp_secret = get_current_totp_secret()
     
     # Check 1: Master Secret Key comparison
-    if hmac.compare_digest(clean_key.encode('utf-8'), CURRENT_ADMIN_KEY.encode('utf-8')):
+    if hmac.compare_digest(clean_key.encode('utf-8'), current_key.encode('utf-8')):
         return clean_key
         
     # Check 2: 6-digit TOTP Google Authenticator code check
     if len(clean_key) == 6 and clean_key.isdigit():
-        totp = pyotp.TOTP(TOTP_SECRET)
+        totp = pyotp.TOTP(totp_secret)
         if totp.verify(clean_key, valid_window=1):
             return clean_key
 
@@ -98,7 +104,8 @@ def generate_cert_id(prefix: str = "OX-INT") -> str:
     return cert_id
 
 def generate_digital_signature(cert_id: str, recipient: str, role: str) -> str:
-    raw_payload = f"{cert_id}:{recipient}:{role}:{time.time()}:{CURRENT_ADMIN_KEY}"
+    current_key = get_current_admin_key()
+    raw_payload = f"{cert_id}:{recipient}:{role}:{time.time()}:{current_key}"
     hash_digest = hashlib.sha256(raw_payload.encode('utf-8')).hexdigest()
     return f"0x{hash_digest}"
 
@@ -108,12 +115,14 @@ async def verify_key(admin_key: str = Depends(verify_admin_key)):
 
 @router.get("/security/status", summary="Get 2FA and Security Status")
 async def security_status():
-    totp = pyotp.TOTP(TOTP_SECRET)
+    totp_secret = get_current_totp_secret()
+    totp = pyotp.TOTP(totp_secret)
     passkeys = db.list_passkeys()
+    is_enabled = db.get_setting("is_2fa_enabled", "true") == "true"
     return {
         "status": "success",
-        "is_2fa_enabled": IS_2FA_ENABLED,
-        "totp_secret": TOTP_SECRET,
+        "is_2fa_enabled": is_enabled,
+        "totp_secret": totp_secret,
         "totp_otpauth_url": totp.provisioning_uri(
             name="admin@opportunityx.co.in",
             issuer_name="OpportunityX Admin Registry"
@@ -124,14 +133,15 @@ async def security_status():
 
 @router.get("/totp/setup", summary="Get Google Authenticator TOTP Setup QR Code")
 async def totp_setup(admin_key: str = Depends(verify_admin_key)):
-    totp = pyotp.TOTP(TOTP_SECRET)
+    totp_secret = get_current_totp_secret()
+    totp = pyotp.TOTP(totp_secret)
     otpauth_url = totp.provisioning_uri(
         name="admin@opportunityx.co.in",
         issuer_name="OpportunityX Admin Registry"
     )
     return {
         "status": "success",
-        "secret": TOTP_SECRET,
+        "secret": totp_secret,
         "otpauth_url": otpauth_url,
         "current_sample_code": totp.now()
     }
@@ -142,7 +152,8 @@ async def totp_verify(payload: TotpVerifyRequest = Body(...)):
     if len(code) != 6 or not code.isdigit():
         raise HTTPException(status_code=400, detail="OTP code must be exactly 6 digits.")
 
-    totp = pyotp.TOTP(TOTP_SECRET)
+    totp_secret = get_current_totp_secret()
+    totp = pyotp.TOTP(totp_secret)
     if totp.verify(code, valid_window=1):
         return {
             "status": "valid",
@@ -158,11 +169,11 @@ async def totp_enable(
     payload: TotpVerifyRequest = Body(...),
     admin_key: str = Depends(verify_admin_key)
 ):
-    global IS_2FA_ENABLED
     code = payload.code.strip()
-    totp = pyotp.TOTP(TOTP_SECRET)
+    totp_secret = get_current_totp_secret()
+    totp = pyotp.TOTP(totp_secret)
     if totp.verify(code, valid_window=1):
-        IS_2FA_ENABLED = True
+        db.set_setting("is_2fa_enabled", "true")
         return {"status": "success", "message": "Google Authenticator 2FA is now ACTIVE and verified!"}
     raise HTTPException(status_code=400, detail="Verification code invalid. 2FA not activated.")
 
@@ -205,15 +216,15 @@ async def update_key(
     payload: UpdateAdminKeyRequest = Body(...),
     admin_key: str = Depends(verify_admin_key)
 ):
-    global CURRENT_ADMIN_KEY
     if not payload.new_key or len(payload.new_key.strip()) < 8:
         raise HTTPException(status_code=400, detail="New Admin Key must be at least 8 characters long.")
 
-    CURRENT_ADMIN_KEY = payload.new_key.strip()
+    new_key_clean = payload.new_key.strip()
+    db.set_setting("admin_key", new_key_clean)
     return {
         "status": "success",
-        "message": "Admin Secret Key updated successfully.",
-        "key_length": len(CURRENT_ADMIN_KEY)
+        "message": "Admin Secret Key permanently updated in database.",
+        "key_length": len(new_key_clean)
     }
 
 @router.post("/issue", response_model=CertificateRecord, summary="Issue New Certificate (Admin Only)")

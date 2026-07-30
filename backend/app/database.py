@@ -51,10 +51,38 @@ class CertificateDatabase:
                         registered_at TEXT
                     )
                 """)
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS settings (
+                        key TEXT PRIMARY KEY,
+                        value TEXT
+                    )
+                """)
                 conn.commit()
             logger.info(f"SQLite persistent database ready at: {DB_PATH}")
         except Exception as e:
             logger.error(f"Failed to initialize SQLite database: {e}")
+
+    def get_setting(self, key: str, default: str = None) -> Optional[str]:
+        try:
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT value FROM settings WHERE key = ?", (key,))
+                row = cursor.fetchone()
+                if row and row[0] is not None:
+                    return row[0]
+        except Exception as e:
+            logger.error(f"Error reading setting {key} from SQLite: {e}")
+        return default
+
+    def set_setting(self, key: str, value: str):
+        try:
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.cursor()
+                cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, str(value)))
+                conn.commit()
+            logger.info(f"Setting '{key}' saved to SQLite database.")
+        except Exception as e:
+            logger.error(f"Error saving setting {key} to SQLite: {e}")
 
     def add_passkey(self, credential_id: str, device_name: str = "Registered Device", public_key: str = None) -> dict:
         clean_id = credential_id.strip()
