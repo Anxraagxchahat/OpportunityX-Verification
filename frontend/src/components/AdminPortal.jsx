@@ -31,6 +31,7 @@ import { CertificateViewerModal } from './CertificateViewerModal';
 
 const DEFAULT_KEY = "OX-SECURE-ADMIN-2026-9f8a3c7b1e4d0258";
 const TOTP_SECRET = "JBSWY3DPEHPK3PXP";
+const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 const TOTP_URL = `otpauth://totp/OpportunityX%20Admin:admin@opportunityx.co.in?secret=${TOTP_SECRET}&issuer=OpportunityX%20Admin%20Registry`;
 
 export function AdminPortal({ isOpen, onClose }) {
@@ -103,7 +104,7 @@ export function AdminPortal({ isOpen, onClose }) {
     }
 
     try {
-      const res = await fetch('http://localhost:8000/api/admin/verify-key', {
+      const res = await fetch(`${API_BASE}/api/admin/verify-key`, {
         headers: { 'X-Admin-Key': testKey.trim() }
       });
 
@@ -137,7 +138,7 @@ export function AdminPortal({ isOpen, onClose }) {
 
   const fetchSecurityStatus = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/admin/security/status');
+      const res = await fetch(`${API_BASE}/api/admin/security/status`);
       if (res.ok) {
         const data = await res.json();
         setIs2faEnabled(data.is_2fa_enabled);
@@ -156,7 +157,7 @@ export function AdminPortal({ isOpen, onClose }) {
     setAuthError('');
 
     try {
-      const res = await fetch('http://localhost:8000/api/admin/totp/verify', {
+      const res = await fetch(`${API_BASE}/api/admin/totp/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code })
@@ -241,7 +242,7 @@ export function AdminPortal({ isOpen, onClose }) {
     setPasskeyRegisterSuccess('');
     try {
       const mockCredId = `OX-PASSKEY-DEVICE-${Date.now()}`;
-      const res = await fetch('http://localhost:8000/api/admin/passkey/register', {
+      const res = await fetch(`${API_BASE}/api/admin/passkey/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -275,7 +276,7 @@ export function AdminPortal({ isOpen, onClose }) {
     }
 
     try {
-      const res = await fetch('http://localhost:8000/api/admin/totp/enable', {
+      const res = await fetch(`${API_BASE}/api/admin/totp/enable`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -303,7 +304,7 @@ export function AdminPortal({ isOpen, onClose }) {
   const fetchRegistryList = async (key) => {
     setLoadingList(true);
     try {
-      const res = await fetch('http://localhost:8000/api/admin/list', {
+      const res = await fetch(`${API_BASE}/api/admin/list`, {
         headers: { 'X-Admin-Key': key || adminKey }
       });
       if (res.ok) {
@@ -349,7 +350,7 @@ export function AdminPortal({ isOpen, onClose }) {
     };
 
     try {
-      const res = await fetch('http://localhost:8000/api/admin/issue', {
+      const res = await fetch(`${API_BASE}/api/admin/issue`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -406,7 +407,7 @@ export function AdminPortal({ isOpen, onClose }) {
     }
 
     try {
-      const res = await fetch('http://localhost:8000/api/admin/update-key', {
+      const res = await fetch(`${API_BASE}/api/admin/update-key`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -438,7 +439,7 @@ export function AdminPortal({ isOpen, onClose }) {
     if (!confirm(`Are you sure you want to REVOKE certificate ${certId}?`)) return;
 
     try {
-      await fetch(`http://localhost:8000/api/admin/revoke/${certId}`, {
+      await fetch(`${API_BASE}/api/admin/revoke/${certId}`, {
         method: 'POST',
         headers: { 'X-Admin-Key': adminKey }
       });

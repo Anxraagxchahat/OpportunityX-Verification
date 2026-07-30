@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: opportunityx-verification-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: OX_ADMIN_KEY
+        value: OX-SECURE-ADMIN-2026-9f8a3c7b1e4d0258
+      - key: OX_TOTP_SECRET
+        value: JBSWY3DPEHPK3PXP

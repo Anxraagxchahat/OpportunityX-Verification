@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = `${API_BASE.replace(/\/$/, '')}/api`;
 
 export async function fetchCertificateVerification(certificateId) {
   const cleanId = encodeURIComponent(certificateId.trim().toUpperCase());
@@ -31,7 +32,6 @@ export async function fetchCertificateVerification(certificateId) {
     return data;
   } catch (error) {
     console.error('API Verification error:', error);
-    // If backend server fails to respond, provide structured fallback
     return {
       found: false,
       status: 'Invalid',
