@@ -7,7 +7,7 @@ import pyotp
 import io
 import base64
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Header, Depends, Body
+from fastapi import APIRouter, HTTPException, Header, Depends, Body, Request
 from pydantic import BaseModel, Field
 
 from app.database import db
@@ -182,16 +182,22 @@ async def totp_enable(
 
 @router.post("/passkey/register", summary="Register WebAuthn Biometric Passkey Device")
 async def register_passkey(
+    request: Request,
     payload: PasskeyRegisterRequest = Body(...),
     admin_key: str = Depends(verify_admin_key)
 ):
     if not payload.credential_id:
         raise HTTPException(status_code=400, detail="Missing credential_id")
     
+    client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else "127.0.0.1")
+    if "," in client_ip:
+        client_ip = client_ip.split(",")[0].strip()
+
     passkey_obj = db.add_passkey(
         credential_id=payload.credential_id,
         device_name=payload.device_name or "Mobile / Biometric Passkey",
-        public_key=payload.public_key
+        public_key=payload.public_key,
+        ip_address=client_ip
     )
     REGISTERED_PASSKEYS[payload.credential_id] = passkey_obj
 
@@ -199,7 +205,24 @@ async def register_passkey(
         "status": "success",
         "message": f"Device Passkey '{payload.device_name}' registered and permanently saved!",
         "credential_id": payload.credential_id,
+        "passkey": passkey_obj,
         "total_passkeys": len(db.list_passkeys())
+    }
+
+@router.delete("/passkey/delete/{credential_id}", summary="Delete / Revoke Registered Device Passkey")
+async def delete_passkey(credential_id: str, admin_key: str = Depends(verify_admin_key)):
+    clean_id = credential_id.strip()
+    if clean_id in REGISTERED_PASSKEYS:
+        del REGISTERED_PASSKEYS[clean_id]
+    
+    success = db.delete_passkey(clean_id)
+    if not success and clean_id not in REGISTERED_PASSKEYS:
+        raise HTTPException(status_code=404, detail="Passkey credential not found.")
+    
+    return {
+        "status": "success",
+        "message": f"Passkey credential deleted successfully.",
+        "remaining_passkeys": len(db.list_passkeys())
     }
 
 @router.post("/passkey/verify", summary="Verify WebAuthn Biometric Passkey")
