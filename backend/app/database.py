@@ -9,15 +9,88 @@ from app.seed_data import SEED_CERTIFICATES
 
 logger = logging.getLogger("opportunityx.db")
 
-# Path for persistent SQLite database
+# Path for persistent SQLite database & fail-safe JSON store
 DB_PATH = os.getenv("SQLITE_DB_PATH", os.path.join(os.path.dirname(__file__), "..", "certificates_registry.db"))
+SECURITY_STORE_PATH = os.getenv("SECURITY_STORE_PATH", os.path.join(os.path.dirname(__file__), "security_store.json"))
 
 class CertificateDatabase:
     def __init__(self):
         self.firestore_db = None
         self._init_sqlite()
         self._init_firebase()
+        self._sync_security_store()
         self._load_sqlite_records()
+
+    def _load_security_json(self) -> dict:
+        try:
+            if os.path.exists(SECURITY_STORE_PATH):
+                with open(SECURITY_STORE_PATH, "r", encoding="utf-8") as f:
+                    return json.load(f)
+        except Exception as e:
+            logger.error(f"Error reading security_store.json: {e}")
+        return {"settings": {}, "passkeys": []}
+
+    def _save_security_json(self, store: dict):
+        try:
+            store_dir = os.path.dirname(os.path.abspath(SECURITY_STORE_PATH))
+            if not os.path.exists(store_dir):
+                os.makedirs(store_dir, exist_ok=True)
+            with open(SECURITY_STORE_PATH, "w", encoding="utf-8") as f:
+                json.dump(store, f, indent=2)
+            logger.info("Security store JSON successfully saved.")
+        except Exception as e:
+            logger.error(f"Error saving security_store.json: {e}")
+
+    def _sync_security_store(self):
+        """Ensure settings and passkeys are synchronized between SQLite, security_store.json, and memory."""
+        try:
+            json_store = self._load_security_json()
+            json_settings = json_store.get("settings", {})
+            json_passkeys = json_store.get("passkeys", [])
+
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.cursor()
+
+                # Sync JSON settings into SQLite if missing
+                for k, v in json_settings.items():
+                    cursor.execute("SELECT value FROM settings WHERE key = ?", (k,))
+                    if not cursor.fetchone():
+                        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (k, str(v)))
+
+                # Sync JSON passkeys into SQLite if missing
+                for pk in json_passkeys:
+                    cred_id = pk.get("credential_id")
+                    if cred_id:
+                        cursor.execute("SELECT credential_id FROM passkeys WHERE credential_id = ?", (cred_id,))
+                        if not cursor.fetchone():
+                            cursor.execute("""
+                                INSERT OR REPLACE INTO passkeys (credential_id, device_name, public_key, registered_at, ip_address)
+                                VALUES (?, ?, ?, ?, ?)
+                            """, (
+                                cred_id,
+                                pk.get("device_name", "Registered Device"),
+                                pk.get("public_key", ""),
+                                pk.get("registered_at", time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())),
+                                pk.get("ip_address", "127.0.0.1")
+                            ))
+                conn.commit()
+
+            # Ensure JSON store has whatever is in SQLite
+            db_passkeys = self.list_passkeys()
+            db_settings = {}
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT key, value FROM settings")
+                for r in cursor.fetchall():
+                    db_settings[r[0]] = r[1]
+
+            updated_json_store = {
+                "settings": db_settings,
+                "passkeys": db_passkeys
+            }
+            self._save_security_json(updated_json_store)
+        except Exception as e:
+            logger.error(f"Error synchronizing security stores: {e}")
 
     def _init_sqlite(self):
         """Initialize zero-config persistent SQLite database."""
@@ -105,21 +178,61 @@ class CertificateDatabase:
                     return row[0]
         except Exception as e:
             logger.error(f"Error reading setting {key} from SQLite: {e}")
+
+        # Fallback to JSON store
+        json_store = self._load_security_json()
+        json_settings = json_store.get("settings", {})
+        if key in json_settings:
+            val = json_settings[key]
+            # Backport to SQLite
+            try:
+                with sqlite3.connect(DB_PATH) as conn:
+                    conn.cursor().execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, str(val)))
+                    conn.commit()
+            except Exception:
+                pass
+            return str(val)
+
         return default
 
     def set_setting(self, key: str, value: str):
+        val_str = str(value)
+        # Update SQLite
         try:
             with sqlite3.connect(DB_PATH) as conn:
                 cursor = conn.cursor()
-                cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, str(value)))
+                cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, val_str))
                 conn.commit()
             logger.info(f"Setting '{key}' saved to SQLite database.")
         except Exception as e:
             logger.error(f"Error saving setting {key} to SQLite: {e}")
 
+        # Update JSON store
+        json_store = self._load_security_json()
+        if "settings" not in json_store:
+            json_store["settings"] = {}
+        json_store["settings"][key] = val_str
+        self._save_security_json(json_store)
+
+        # Sync to Firestore if available
+        if self.firestore_db:
+            try:
+                self.firestore_db.collection("settings").document(key).set({"value": val_str})
+            except Exception as e:
+                logger.warning(f"Error syncing setting '{key}' to Firestore: {e}")
+
     def add_passkey(self, credential_id: str, device_name: str = "Registered Device", public_key: str = None, ip_address: str = "127.0.0.1") -> dict:
         clean_id = credential_id.strip()
         registered_at = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
+        passkey_obj = {
+            "credential_id": clean_id,
+            "device_name": device_name,
+            "public_key": public_key or "",
+            "registered_at": registered_at,
+            "ip_address": ip_address
+        }
+
+        # Save to SQLite
         try:
             with sqlite3.connect(DB_PATH) as conn:
                 cursor = conn.cursor()
@@ -132,13 +245,23 @@ class CertificateDatabase:
         except Exception as e:
             logger.error(f"Error saving passkey to SQLite: {e}")
 
-        return {
-            "credential_id": clean_id,
-            "device_name": device_name,
-            "public_key": public_key,
-            "registered_at": registered_at,
-            "ip_address": ip_address
-        }
+        # Save to JSON store
+        json_store = self._load_security_json()
+        passkeys_list = json_store.get("passkeys", [])
+        # Remove existing if any
+        passkeys_list = [p for p in passkeys_list if p.get("credential_id") != clean_id]
+        passkeys_list.append(passkey_obj)
+        json_store["passkeys"] = passkeys_list
+        self._save_security_json(json_store)
+
+        # Sync to Firestore if available
+        if self.firestore_db:
+            try:
+                self.firestore_db.collection("passkeys").document(clean_id).set(passkey_obj)
+            except Exception as e:
+                logger.warning(f"Error syncing passkey to Firestore: {e}")
+
+        return passkey_obj
 
     def is_passkey_valid(self, credential_id: str) -> bool:
         clean_id = credential_id.strip()
@@ -149,18 +272,27 @@ class CertificateDatabase:
                 cursor = conn.cursor()
                 cursor.execute("SELECT credential_id FROM passkeys WHERE credential_id = ?", (clean_id,))
                 row = cursor.fetchone()
-                return row is not None
+                if row is not None:
+                    return True
         except Exception as e:
             logger.error(f"Error validating passkey in SQLite: {e}")
-            return False
+
+        # Fallback check in JSON store
+        json_store = self._load_security_json()
+        for p in json_store.get("passkeys", []):
+            if p.get("credential_id") == clean_id:
+                return True
+
+        return False
 
     def list_passkeys(self) -> List[dict]:
+        passkeys = []
         try:
             with sqlite3.connect(DB_PATH) as conn:
                 cursor = conn.cursor()
                 cursor.execute("SELECT credential_id, device_name, registered_at, ip_address FROM passkeys")
                 rows = cursor.fetchall()
-                return [
+                passkeys = [
                     {
                         "credential_id": r[0],
                         "device_name": r[1],
@@ -171,19 +303,43 @@ class CertificateDatabase:
                 ]
         except Exception as e:
             logger.error(f"Error listing passkeys from SQLite: {e}")
-            return []
+
+        if not passkeys:
+            json_store = self._load_security_json()
+            passkeys = json_store.get("passkeys", [])
+
+        return passkeys
 
     def delete_passkey(self, credential_id: str) -> bool:
         clean_id = credential_id.strip()
+        deleted = False
         try:
             with sqlite3.connect(DB_PATH) as conn:
                 cursor = conn.cursor()
                 cursor.execute("DELETE FROM passkeys WHERE credential_id = ?", (clean_id,))
                 conn.commit()
-                return cursor.rowcount > 0
+                deleted = cursor.rowcount > 0
         except Exception as e:
             logger.error(f"Error deleting passkey {clean_id} from SQLite: {e}")
-            return False
+
+        # Update JSON store
+        json_store = self._load_security_json()
+        passkeys_list = json_store.get("passkeys", [])
+        initial_len = len(passkeys_list)
+        passkeys_list = [p for p in passkeys_list if p.get("credential_id") != clean_id]
+        if len(passkeys_list) < initial_len:
+            deleted = True
+        json_store["passkeys"] = passkeys_list
+        self._save_security_json(json_store)
+
+        # Sync to Firestore if available
+        if self.firestore_db:
+            try:
+                self.firestore_db.collection("passkeys").document(clean_id).delete()
+            except Exception as e:
+                logger.warning(f"Error deleting passkey from Firestore: {e}")
+
+        return deleted
 
     def _load_sqlite_records(self):
         """Load persistent records into memory index on startup."""
@@ -362,6 +518,32 @@ class CertificateDatabase:
                 logger.error(f"Error revoking in Firestore: {e}")
 
         return True
+
+    def delete_certificate(self, certificate_id: str) -> bool:
+        clean_id = certificate_id.strip().upper()
+        if clean_id in SEED_CERTIFICATES:
+            del SEED_CERTIFICATES[clean_id]
+
+        deleted = False
+        try:
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM certificates WHERE certificate_id = ?", (clean_id,))
+                conn.commit()
+                deleted = cursor.rowcount > 0
+            logger.info(f"Certificate {clean_id} permanently deleted from SQLite database.")
+        except Exception as e:
+            logger.error(f"Error deleting certificate {clean_id} from SQLite: {e}")
+
+        # Delete from Firestore if available
+        if self.firestore_db:
+            try:
+                self.firestore_db.collection("certificates").document(clean_id).delete()
+                logger.info(f"Certificate {clean_id} deleted from Firestore.")
+            except Exception as e:
+                logger.error(f"Error deleting certificate {clean_id} from Firestore: {e}")
+
+        return deleted
 
 db = CertificateDatabase()
 
