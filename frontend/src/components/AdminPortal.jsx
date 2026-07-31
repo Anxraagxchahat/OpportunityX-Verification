@@ -24,7 +24,11 @@ import {
   Smartphone,
   Fingerprint,
   QrCode,
-  Shield
+  Shield,
+  ShieldAlert,
+  Laptop,
+  Globe,
+  X
 } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { CertificateViewerModal } from './CertificateViewerModal';
@@ -35,11 +39,21 @@ const API_BASE = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https
 const TOTP_URL = `otpauth://totp/OpportunityX%20Admin:admin@opportunityx.co.in?secret=${TOTP_SECRET}&issuer=OpportunityX%20Admin%20Registry`;
 
 export function AdminPortal({ isOpen, onClose }) {
-  const [adminKey, setAdminKey] = useState(DEFAULT_KEY);
+  const [adminKey, setAdminKey] = useState(() => localStorage.getItem('ox_admin_key') || DEFAULT_KEY);
   const [inputKey, setInputKey] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authError, setAuthError] = useState('');
   const [activeTab, setActiveTab] = useState('generator'); // 'generator' | 'list' | 'settings'
+
+  // Toast Notification System (replaces raw browser alerts)
+  const [toast, setToast] = useState(null); // { type: 'success' | 'error', message: string }
+
+  // Custom Modal States (replaces raw browser confirms)
+  const [confirmRevokeCert, setConfirmRevokeCert] = useState(null); // Certificate object
+  const [isRevoking, setIsRevoking] = useState(false);
+  const [confirmDeletePasskey, setConfirmDeletePasskey] = useState(null); // Passkey object
+  const [isDeletingPasskey, setIsDeletingPasskey] = useState(false);
+  const [passkeyNickname, setPasskeyNickname] = useState('');
 
   // Auth Methods: 'secret' | 'totp' | 'passkey'
   const [authMethod, setAuthMethod] = useState('secret');
@@ -51,6 +65,14 @@ export function AdminPortal({ isOpen, onClose }) {
   const [registeredPasskeys, setRegisteredPasskeys] = useState([]);
   const [showQrModal, setShowQrModal] = useState(false);
   const [copiedSecret, setCopiedSecret] = useState(false);
+
+  // Helper for displaying toast notifications
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast(null);
+    }, 4000);
+  };
 
   // Form State
   const [formData, setFormData] = useState({
@@ -90,7 +112,6 @@ export function AdminPortal({ isOpen, onClose }) {
   // Explicit session logout / lock
   const handleLogout = () => {
     setIsAuthenticated(false);
-    setAdminKey(DEFAULT_KEY);
     setInputKey('');
     setTotpCode('');
     setAuthError('');
@@ -121,6 +142,7 @@ export function AdminPortal({ isOpen, onClose }) {
         const activeKey = data.admin_key || testKey;
         setIsAuthenticated(true);
         setAdminKey(activeKey);
+        localStorage.setItem('ox_admin_key', activeKey);
         fetchRegistryList(activeKey);
         fetchSecurityStatus();
       } else {
@@ -166,6 +188,7 @@ export function AdminPortal({ isOpen, onClose }) {
         const activeKey = data.admin_key || code;
         setIsAuthenticated(true);
         setAdminKey(activeKey);
+        localStorage.setItem('ox_admin_key', activeKey);
         fetchRegistryList(activeKey);
         fetchSecurityStatus();
       } else {
@@ -194,7 +217,6 @@ export function AdminPortal({ isOpen, onClose }) {
       const challenge = new Uint8Array(32);
       window.crypto.getRandomValues(challenge);
 
-      // Triggers modern browser passkey prompt (QR code for phone, USB key, Windows Hello, Touch ID)
       const credential = await navigator.credentials.get({
         publicKey: {
           challenge,
@@ -215,6 +237,7 @@ export function AdminPortal({ isOpen, onClose }) {
           const activeKey = data.admin_key || credential.id;
           setIsAuthenticated(true);
           setAdminKey(activeKey);
+          localStorage.setItem('ox_admin_key', activeKey);
           fetchRegistryList(activeKey);
           fetchSecurityStatus();
         } else {
@@ -237,12 +260,12 @@ export function AdminPortal({ isOpen, onClose }) {
     }
   };
 
-  // Standard WebAuthn Register Passkey Device inside Settings
+  // Register Passkey Device inside Security Settings
   const handleRegisterPasskeyDevice = async () => {
     setPasskeyRegisterSuccess('');
 
     if (!window.PublicKeyCredential) {
-      alert('WebAuthn / Passkeys are not supported in your browser.');
+      showToast('WebAuthn / Passkeys are not supported in your browser.', 'error');
       return;
     }
 
@@ -252,7 +275,6 @@ export function AdminPortal({ isOpen, onClose }) {
       const userId = new Uint8Array(16);
       window.crypto.getRandomValues(userId);
 
-      // Opens browser native prompt for passkeys (Phone QR scan, Touch ID, Windows Hello, Hardware Key)
       const credential = await navigator.credentials.create({
         publicKey: {
           challenge,
@@ -276,7 +298,9 @@ export function AdminPortal({ isOpen, onClose }) {
       });
 
       if (credential && credential.id) {
-        const deviceLabel = navigator.userAgent.includes('Mobile') ? 'Smartphone Passkey' : 'Workstation Passkey';
+        const defaultLabel = navigator.userAgent.includes('Mobile') ? 'Smartphone Passkey' : 'Workstation Passkey';
+        const finalDeviceName = passkeyNickname.trim() || defaultLabel;
+
         const res = await fetch(`${API_BASE}/api/admin/passkey/register`, {
           method: 'POST',
           headers: {
@@ -285,23 +309,52 @@ export function AdminPortal({ isOpen, onClose }) {
           },
           body: JSON.stringify({
             credential_id: credential.id,
-            device_name: deviceLabel
+            device_name: finalDeviceName
           })
         });
 
         if (res.ok) {
-          setRegisteredPasskeys([...registeredPasskeys, { credential_id: credential.id, device_name: deviceLabel }]);
-          setPasskeyRegisterSuccess('Biometric Passkey registered successfully!');
+          showToast(`Biometric Passkey '${finalDeviceName}' registered successfully!`, 'success');
+          setPasskeyRegisterSuccess(`Passkey '${finalDeviceName}' registered successfully!`);
+          setPasskeyNickname('');
+          fetchSecurityStatus();
           setTimeout(() => setPasskeyRegisterSuccess(''), 4000);
         } else {
           const errData = await res.json().catch(() => ({}));
-          alert(errData.detail || 'Failed to register passkey with backend.');
+          showToast(errData.detail || 'Failed to register passkey with backend.', 'error');
         }
       }
     } catch (err) {
       if (err.name !== 'NotAllowedError') {
-        alert(`Passkey Registration Error: ${err.message || 'Cancelled by user.'}`);
+        showToast(`Passkey Registration Error: ${err.message || 'Cancelled by user.'}`, 'error');
       }
+    }
+  };
+
+  // Delete Passkey device action
+  const handleConfirmDeletePasskey = async () => {
+    if (!confirmDeletePasskey) return;
+    const credId = confirmDeletePasskey.credential_id;
+    setIsDeletingPasskey(true);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/passkey/delete/${encodeURIComponent(credId)}`, {
+        method: 'DELETE',
+        headers: { 'X-Admin-Key': adminKey }
+      });
+
+      if (res.ok) {
+        showToast('Passkey device removed permanently.', 'success');
+        setConfirmDeletePasskey(null);
+        fetchSecurityStatus();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        showToast(errData.detail || 'Failed to delete passkey from backend.', 'error');
+      }
+    } catch (err) {
+      showToast('Unable to reach server to delete passkey.', 'error');
+    } finally {
+      setIsDeletingPasskey(false);
     }
   };
 
@@ -309,7 +362,7 @@ export function AdminPortal({ isOpen, onClose }) {
   const handleEnable2FAInSettings = async (e) => {
     e.preventDefault();
     if (setupTotpCode.trim().length !== 6) {
-      alert("Please enter the 6-digit code from Google Authenticator.");
+      showToast("Please enter the 6-digit code from Google Authenticator.", "error");
       return;
     }
 
@@ -326,14 +379,15 @@ export function AdminPortal({ isOpen, onClose }) {
       if (res.ok) {
         setIs2faEnabled(true);
         setTotpEnableSuccess('Google Authenticator 2FA is now ENABLED & LINKED!');
+        showToast('Google Authenticator 2FA is now ENABLED & LINKED!', 'success');
         setSetupTotpCode('');
         setTimeout(() => setTotpEnableSuccess(''), 4000);
       } else {
         const errData = await res.json().catch(() => ({}));
-        alert(errData.detail || "Invalid code. Please enter the current 6-digit OTP from your phone app.");
+        showToast(errData.detail || "Invalid code. Please enter the current 6-digit OTP from your phone app.", "error");
       }
     } catch (err) {
-      alert("Unable to reach server to enable 2FA.");
+      showToast("Unable to reach server to enable 2FA.", "error");
     }
   };
 
@@ -399,6 +453,7 @@ export function AdminPortal({ isOpen, onClose }) {
         const newRecord = await res.json();
         setIssuedResult(newRecord);
         setRegistryList([newRecord, ...registryList]);
+        showToast(`Certificate ${newRecord.certificate_id} issued successfully!`, 'success');
       } else {
         throw new Error('API return error');
       }
@@ -430,6 +485,7 @@ export function AdminPortal({ isOpen, onClose }) {
 
       setIssuedResult(mockRecord);
       setRegistryList([mockRecord, ...registryList]);
+      showToast(`Certificate ${certId} generated in fallback mode.`, 'success');
     } finally {
       setIssuing(false);
     }
@@ -438,7 +494,7 @@ export function AdminPortal({ isOpen, onClose }) {
   const handleUpdateKey = async (e) => {
     e.preventDefault();
     if (!newAdminKey || newAdminKey.trim().length < 8) {
-      alert("New Admin Key must be at least 8 characters long.");
+      showToast("New Admin Key must be at least 8 characters long.", "error");
       return;
     }
 
@@ -459,31 +515,52 @@ export function AdminPortal({ isOpen, onClose }) {
         const resData = await res.json();
         const updatedKey = resData.admin_key || newAdminKey.trim();
         setAdminKey(updatedKey);
+        localStorage.setItem('ox_admin_key', updatedKey);
         setKeyUpdateSuccess('Admin Secret Key permanently updated in database!');
+        showToast('Admin Secret Key permanently updated in database!', 'success');
         setNewAdminKey('');
         setTimeout(() => setKeyUpdateSuccess(''), 3000);
       } else {
         const errData = await res.json().catch(() => ({}));
-        alert(errData.detail || 'Failed to update Admin Secret Key.');
+        showToast(errData.detail || 'Failed to update Admin Secret Key.', 'error');
       }
     } catch (err) {
-      alert('Unable to reach server to update Admin Secret Key.');
+      showToast('Unable to reach server to update Admin Secret Key.', 'error');
     }
   };
 
-  const handleRevoke = async (certId) => {
-    if (!confirm(`Are you sure you want to REVOKE certificate ${certId}?`)) return;
+  // Revoke button triggers custom confirmation modal instead of browser alert
+  const triggerRevokeModal = (item) => {
+    setConfirmRevokeCert(item);
+  };
+
+  // Confirms revocation with backend API
+  const handleConfirmRevocation = async () => {
+    if (!confirmRevokeCert) return;
+    const certId = confirmRevokeCert.certificate_id;
+    setIsRevoking(true);
 
     try {
-      await fetch(`${API_BASE}/api/admin/revoke/${certId}`, {
+      const res = await fetch(`${API_BASE}/api/admin/revoke/${certId}`, {
         method: 'POST',
         headers: { 'X-Admin-Key': adminKey }
       });
-    } catch (e) {}
 
-    setRegistryList(registryList.map(item => 
-      item.certificate_id === certId ? { ...item, status: 'Revoked' } : item
-    ));
+      if (res.ok) {
+        setRegistryList(prev => prev.map(item => 
+          item.certificate_id === certId ? { ...item, status: 'Revoked' } : item
+        ));
+        showToast(`Certificate ${certId} has been officially REVOKED.`, 'success');
+        setConfirmRevokeCert(null);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        showToast(errData.detail || 'Failed to revoke certificate on server.', 'error');
+      }
+    } catch (err) {
+      showToast('Unable to reach server to revoke certificate.', 'error');
+    } finally {
+      setIsRevoking(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -1080,7 +1157,7 @@ export function AdminPortal({ isOpen, onClose }) {
                                 {item.status !== 'Revoked' && (
                                   <button
                                     type="button"
-                                    onClick={() => handleRevoke(item.certificate_id)}
+                                    onClick={() => triggerRevokeModal(item)}
                                     className="px-2 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-semibold border border-rose-500/30"
                                   >
                                     Revoke
@@ -1176,37 +1253,103 @@ export function AdminPortal({ isOpen, onClose }) {
                         <Fingerprint className="text-emerald-400" size={20} />
                         <div>
                           <h3 className="text-base font-extrabold text-white">Biometric Passkey Management</h3>
-                          <p className="text-xs text-slate-400">Register device fingerprint / Touch ID / Face ID for 1-click login.</p>
+                          <p className="text-xs text-slate-400">Register and manage device fingerprints, PINs, or Touch ID for 1-click login.</p>
                         </div>
                       </div>
                       <div>
                         <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center gap-1.5">
-                          <Fingerprint size={13} /> {registeredPasskeys.length > 0 ? `${registeredPasskeys.length} Registered` : '0 Devices'}
+                          <Fingerprint size={13} /> {registeredPasskeys.length > 0 ? `${registeredPasskeys.length} Device${registeredPasskeys.length > 1 ? 's' : ''}` : '0 Devices'}
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-slate-900 border border-slate-800">
-                      <div className="space-y-1 text-center sm:text-left">
-                        <span className="text-xs font-bold text-white block">Register New Biometric Passkey</span>
-                        <span className="text-[11px] text-slate-400 block">Link current smartphone or laptop fingerprint scanner.</span>
+                    {/* REGISTER NEW DEVICE INPUT + ACTION */}
+                    <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                        <div className="space-y-1 text-center sm:text-left w-full sm:w-auto">
+                          <span className="text-xs font-bold text-white block">Register New Passkey Device</span>
+                          <span className="text-[11px] text-slate-400 block">Enter a custom nickname for this device before triggering biometric scan.</span>
+                        </div>
+
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <input
+                            type="text"
+                            value={passkeyNickname}
+                            onChange={(e) => setPasskeyNickname(e.target.value)}
+                            placeholder="Device Nickname (e.g. Work PC Pin)"
+                            className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-emerald-500 flex-1 sm:w-48"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleRegisterPasskeyDevice}
+                            className="px-4 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all shadow-md active:scale-95"
+                          >
+                            <Fingerprint size={15} />
+                            <span>Scan Passkey</span>
+                          </button>
+                        </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={handleRegisterPasskeyDevice}
-                        className="px-4 py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all shadow-md"
-                      >
-                        <Fingerprint size={16} />
-                        <span>Register Device Passkey</span>
-                      </button>
+                      {passkeyRegisterSuccess && (
+                        <p className="text-xs font-bold text-emerald-400 flex items-center gap-1 pt-1">
+                          <CheckCircle2 size={14} /> {passkeyRegisterSuccess}
+                        </p>
+                      )}
                     </div>
 
-                    {passkeyRegisterSuccess && (
-                      <p className="text-xs font-bold text-emerald-400 flex items-center gap-1">
-                        <CheckCircle2 size={14} /> {passkeyRegisterSuccess}
-                      </p>
-                    )}
+                    {/* REGISTERED PASSKEYS DEVICE LIST TABLE */}
+                    <div className="space-y-2 pt-2">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">
+                        Active Registered Passkey Devices ({registeredPasskeys.length})
+                      </h4>
+
+                      {registeredPasskeys.length === 0 ? (
+                        <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800 text-center text-xs text-slate-500 font-mono">
+                          No registered passkey devices found. Click "Scan Passkey" above to pair your current device.
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {registeredPasskeys.map((passkey, idx) => (
+                            <div key={idx} className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-3 hover:border-slate-700 transition-all">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                                  {passkey.device_name?.toLowerCase().includes('phone') || passkey.device_name?.toLowerCase().includes('mobile') ? (
+                                    <Smartphone size={18} />
+                                  ) : (
+                                    <Laptop size={18} />
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-white">{passkey.device_name || 'Registered Device'}</span>
+                                    <span className="px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-mono text-slate-400 flex items-center gap-1 border border-slate-700">
+                                      <Globe size={10} className="text-emerald-400" />
+                                      <span>{passkey.ip_address || '127.0.0.1'}</span>
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-3 text-[11px] text-slate-400 mt-0.5">
+                                    <span>Registered: <strong className="text-slate-300 font-mono">{passkey.registered_at || 'Recent'}</strong></span>
+                                    <span>•</span>
+                                    <span className="font-mono text-[10px] text-slate-500">ID: {passkey.credential_id?.slice(0, 14)}...</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeletePasskey(passkey)}
+                                className="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all"
+                                title="Delete / Remove Passkey Device"
+                              >
+                                <Trash2 size={14} />
+                                <span className="hidden sm:inline">Delete</span>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
                   </div>
 
                   {/* SECTION 3: MASTER SECRET KEY CONFIG */}
@@ -1331,6 +1474,178 @@ export function AdminPortal({ isOpen, onClose }) {
               onClose={() => setViewingDoc(null)}
               data={viewingDoc}
             />
+          )}
+
+          {/* CUSTOM CONFIRMATION MODAL FOR CERTIFICATE REVOCATION */}
+          {confirmRevokeCert && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 text-left space-y-4 shadow-2xl relative"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400">
+                    <ShieldAlert size={26} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-white">Confirm Certificate Revocation</h3>
+                    <p className="text-xs text-slate-400">OpportunityX Authority Audit Engine</p>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Certificate ID:</span>
+                    <span className="font-mono font-bold text-amber-400">{confirmRevokeCert.certificate_id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Recipient:</span>
+                    <span className="font-bold text-white">{confirmRevokeCert.recipient}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Role:</span>
+                    <span className="text-slate-300">{confirmRevokeCert.role}</span>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-[11px] leading-relaxed flex items-start gap-2">
+                  <AlertCircle size={16} className="shrink-0 text-rose-400 mt-0.5" />
+                  <span>
+                    Are you sure you want to <strong>REVOKE</strong> certificate <strong className="font-mono">{confirmRevokeCert.certificate_id}</strong>?
+                    This will permanently set its status to <strong>REVOKED</strong> on public verification portals.
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmRevokeCert(null)}
+                    disabled={isRevoking}
+                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmRevocation}
+                    disabled={isRevoking}
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 text-white font-bold text-xs shadow-lg shadow-rose-500/20 active:scale-95 transition-all flex items-center gap-2"
+                  >
+                    {isRevoking ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Revoking...</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldAlert size={14} />
+                        <span>Yes, Revoke Certificate</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+
+          {/* CUSTOM CONFIRMATION MODAL FOR DELETING PASSKEY DEVICE */}
+          {confirmDeletePasskey && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 text-left space-y-4 shadow-2xl relative"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400">
+                    <Trash2 size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-white">Delete Biometric Passkey</h3>
+                    <p className="text-xs text-slate-400">Unlink Biometric Credential</p>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Device Name:</span>
+                    <span className="font-bold text-white">{confirmDeletePasskey.device_name || 'Passkey Device'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">IP Address:</span>
+                    <span className="font-mono text-emerald-400">{confirmDeletePasskey.ip_address || '127.0.0.1'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Credential ID:</span>
+                    <span className="font-mono text-slate-400">{confirmDeletePasskey.credential_id?.slice(0, 16)}...</span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Are you sure you want to remove this passkey device? You will no longer be able to authenticate with this device's biometric scanner.
+                </p>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeletePasskey(null)}
+                    disabled={isDeletingPasskey}
+                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmDeletePasskey}
+                    disabled={isDeletingPasskey}
+                    className="px-5 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs shadow-lg shadow-rose-500/20 active:scale-95 transition-all flex items-center gap-2"
+                  >
+                    {isDeletingPasskey ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Removing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 size={14} />
+                        <span>Delete Passkey</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+
+          {/* TOAST NOTIFICATION OVERLAY */}
+          {toast && (
+            <div className="fixed top-6 right-6 z-[70] pointer-events-auto">
+              <motion.div
+                initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                className={`px-4 py-3 rounded-2xl border shadow-2xl flex items-center gap-3 text-xs font-semibold backdrop-blur-xl ${
+                  toast.type === 'error'
+                    ? 'bg-rose-950/95 border-rose-500/50 text-rose-200 shadow-rose-950/50'
+                    : 'bg-emerald-950/95 border-emerald-500/50 text-emerald-200 shadow-emerald-950/50'
+                }`}
+              >
+                {toast.type === 'error' ? (
+                  <AlertCircle size={18} className="text-rose-400 shrink-0" />
+                ) : (
+                  <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
+                )}
+                <span>{toast.message}</span>
+                <button
+                  type="button"
+                  onClick={() => setToast(null)}
+                  className="ml-2 text-slate-400 hover:text-white"
+                >
+                  <X size={14} />
+                </button>
+              </motion.div>
+            </div>
           )}
 
         </motion.div>
