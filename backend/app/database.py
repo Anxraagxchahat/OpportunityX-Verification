@@ -48,7 +48,8 @@ class CertificateDatabase:
                         credential_id TEXT PRIMARY KEY,
                         device_name TEXT,
                         public_key TEXT,
-                        registered_at TEXT
+                        registered_at TEXT,
+                        ip_address TEXT
                     )
                 """)
                 cursor.execute("""
@@ -57,6 +58,38 @@ class CertificateDatabase:
                         value TEXT
                     )
                 """)
+                # Migration check for ip_address column
+                try:
+                    cursor.execute("ALTER TABLE passkeys ADD COLUMN ip_address TEXT")
+                except Exception:
+                    pass
+
+                # Pre-seed initial certificates into SQLite database if empty
+                cursor.execute("SELECT COUNT(*) FROM certificates")
+                count_row = cursor.fetchone()
+                if count_row and count_row[0] == 0:
+                    for cert_id, record in SEED_CERTIFICATES.items():
+                        record_dict = record.dict()
+                        data_json = json.dumps(record_dict)
+                        cursor.execute("""
+                            INSERT OR REPLACE INTO certificates (
+                                certificate_id, status, recipient, type_label, role,
+                                duration, issued_date, issued_by, digital_signature,
+                                verification_timestamp, data_json
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (
+                            cert_id,
+                            record.status.value,
+                            record.recipient_name,
+                            record.certificate_type.value,
+                            record.role,
+                            record.duration,
+                            record.issued_date,
+                            "OpportunityX",
+                            record.digital_signature,
+                            record.created_at,
+                            data_json
+                        ))
                 conn.commit()
             logger.info(f"SQLite persistent database ready at: {DB_PATH}")
         except Exception as e:
@@ -84,16 +117,16 @@ class CertificateDatabase:
         except Exception as e:
             logger.error(f"Error saving setting {key} to SQLite: {e}")
 
-    def add_passkey(self, credential_id: str, device_name: str = "Registered Device", public_key: str = None) -> dict:
+    def add_passkey(self, credential_id: str, device_name: str = "Registered Device", public_key: str = None, ip_address: str = "127.0.0.1") -> dict:
         clean_id = credential_id.strip()
         registered_at = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
         try:
             with sqlite3.connect(DB_PATH) as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
-                    INSERT OR REPLACE INTO passkeys (credential_id, device_name, public_key, registered_at)
-                    VALUES (?, ?, ?, ?)
-                """, (clean_id, device_name, public_key or "", registered_at))
+                    INSERT OR REPLACE INTO passkeys (credential_id, device_name, public_key, registered_at, ip_address)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (clean_id, device_name, public_key or "", registered_at, ip_address))
                 conn.commit()
             logger.info(f"Passkey {clean_id[:12]}... saved to SQLite database.")
         except Exception as e:
@@ -103,7 +136,8 @@ class CertificateDatabase:
             "credential_id": clean_id,
             "device_name": device_name,
             "public_key": public_key,
-            "registered_at": registered_at
+            "registered_at": registered_at,
+            "ip_address": ip_address
         }
 
     def is_passkey_valid(self, credential_id: str) -> bool:
@@ -124,15 +158,32 @@ class CertificateDatabase:
         try:
             with sqlite3.connect(DB_PATH) as conn:
                 cursor = conn.cursor()
-                cursor.execute("SELECT credential_id, device_name, registered_at FROM passkeys")
+                cursor.execute("SELECT credential_id, device_name, registered_at, ip_address FROM passkeys")
                 rows = cursor.fetchall()
                 return [
-                    {"credential_id": r[0], "device_name": r[1], "registered_at": r[2]}
+                    {
+                        "credential_id": r[0],
+                        "device_name": r[1],
+                        "registered_at": r[2],
+                        "ip_address": r[3] if len(r) > 3 and r[3] else "127.0.0.1"
+                    }
                     for r in rows
                 ]
         except Exception as e:
             logger.error(f"Error listing passkeys from SQLite: {e}")
             return []
+
+    def delete_passkey(self, credential_id: str) -> bool:
+        clean_id = credential_id.strip()
+        try:
+            with sqlite3.connect(DB_PATH) as conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM passkeys WHERE credential_id = ?", (clean_id,))
+                conn.commit()
+                return cursor.rowcount > 0
+        except Exception as e:
+            logger.error(f"Error deleting passkey {clean_id} from SQLite: {e}")
+            return False
 
     def _load_sqlite_records(self):
         """Load persistent records into memory index on startup."""
