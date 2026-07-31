@@ -29,6 +29,18 @@ CURRENT_ADMIN_KEY = DEFAULT_ADMIN_KEY
 IS_2FA_ENABLED = True
 REGISTERED_PASSKEYS = {}
 
+def sync_registered_passkeys_memory():
+    try:
+        pks = db.list_passkeys()
+        for pk in pks:
+            cred_id = pk.get("credential_id")
+            if cred_id:
+                REGISTERED_PASSKEYS[cred_id] = pk
+    except Exception:
+        pass
+
+sync_registered_passkeys_memory()
+
 class IssueCertificateRequest(BaseModel):
     recipient: str = Field(..., example="Anurag Verma")
     type_label: str = Field(default="Internship Certificate", example="Internship Certificate")
@@ -299,3 +311,15 @@ async def revoke_certificate(certificate_id: str, admin_key: str = Depends(verif
     if not success:
         raise HTTPException(status_code=404, detail="Certificate ID not found.")
     return {"status": "success", "message": f"Certificate {certificate_id} has been revoked."}
+
+@router.delete("/delete/{certificate_id}", summary="Delete Certificate Permanently (Admin Only)")
+@router.post("/delete/{certificate_id}", summary="Delete Certificate Permanently (Admin Only)")
+async def delete_certificate(certificate_id: str, admin_key: str = Depends(verify_admin_key)):
+    clean_id = certificate_id.strip().upper()
+    success = db.delete_certificate(clean_id)
+    if clean_id in SEED_CERTIFICATES:
+        del SEED_CERTIFICATES[clean_id]
+        success = True
+    if not success:
+        raise HTTPException(status_code=404, detail="Certificate ID not found.")
+    return {"status": "success", "message": f"Certificate {certificate_id} has been permanently deleted."}
