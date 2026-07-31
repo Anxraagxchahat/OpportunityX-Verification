@@ -51,6 +51,8 @@ export function AdminPortal({ isOpen, onClose }) {
   // Custom Modal States (replaces raw browser confirms)
   const [confirmRevokeCert, setConfirmRevokeCert] = useState(null); // Certificate object
   const [isRevoking, setIsRevoking] = useState(false);
+  const [confirmDeleteCert, setConfirmDeleteCert] = useState(null); // Certificate object to delete
+  const [isDeletingCert, setIsDeletingCert] = useState(false);
   const [confirmDeletePasskey, setConfirmDeletePasskey] = useState(null); // Passkey object
   const [isDeletingPasskey, setIsDeletingPasskey] = useState(false);
   const [passkeyNickname, setPasskeyNickname] = useState('');
@@ -62,7 +64,14 @@ export function AdminPortal({ isOpen, onClose }) {
 
   // Security Enrollment State (Managed inside Settings)
   const [is2faEnabled, setIs2faEnabled] = useState(false);
-  const [registeredPasskeys, setRegisteredPasskeys] = useState([]);
+  const [registeredPasskeys, setRegisteredPasskeys] = useState(() => {
+    try {
+      const local = localStorage.getItem('ox_registered_passkeys');
+      return local ? JSON.parse(local) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [showQrModal, setShowQrModal] = useState(false);
   const [copiedSecret, setCopiedSecret] = useState(false);
 
@@ -118,8 +127,9 @@ export function AdminPortal({ isOpen, onClose }) {
     setIssuedResult(null);
   };
 
-  // Lock portal session on initial load or modal close
+  // Pre-fetch security status & lock session on mount
   useEffect(() => {
+    fetchSecurityStatus();
     handleLogout();
   }, []);
 
@@ -162,9 +172,18 @@ export function AdminPortal({ isOpen, onClose }) {
       if (res.ok) {
         const data = await res.json();
         setIs2faEnabled(data.is_2fa_enabled);
-        setRegisteredPasskeys(data.registered_passkeys || []);
+        const pks = data.registered_passkeys || [];
+        setRegisteredPasskeys(pks);
+        localStorage.setItem('ox_registered_passkeys', JSON.stringify(pks));
       }
-    } catch (err) {}
+    } catch (err) {
+      try {
+        const localPks = JSON.parse(localStorage.getItem('ox_registered_passkeys') || '[]');
+        if (localPks.length > 0) {
+          setRegisteredPasskeys(localPks);
+        }
+      } catch (e) {}
+    }
   };
 
   // Google Authenticator 6-Digit Verification
@@ -217,13 +236,42 @@ export function AdminPortal({ isOpen, onClose }) {
       const challenge = new Uint8Array(32);
       window.crypto.getRandomValues(challenge);
 
-      const credential = await navigator.credentials.get({
+      const parseCredId = (idStr) => {
+        try {
+          return new TextEncoder().encode(idStr);
+        } catch (e) {
+          return null;
+        }
+      };
+
+      const allowCreds = (registeredPasskeys || [])
+        .map(pk => parseCredId(pk.credential_id))
+        .filter(b => b && b.length > 0)
+        .map(id => ({ id, type: 'public-key' }));
+
+      const getOptions = {
         publicKey: {
           challenge,
           timeout: 60000,
           userVerification: "preferred"
         }
-      });
+      };
+
+      if (allowCreds.length > 0) {
+        getOptions.publicKey.allowCredentials = allowCreds;
+      }
+
+      let credential = null;
+      try {
+        credential = await navigator.credentials.get(getOptions);
+      } catch (getErr) {
+        if (allowCreds.length > 0) {
+          delete getOptions.publicKey.allowCredentials;
+          credential = await navigator.credentials.get(getOptions);
+        } else {
+          throw getErr;
+        }
+      }
 
       if (credential && credential.id) {
         const res = await fetch(`${API_BASE}/api/admin/passkey/verify`, {
@@ -290,7 +338,8 @@ export function AdminPortal({ isOpen, onClose }) {
             { type: "public-key", alg: -8 }    // Ed25519
           ],
           authenticatorSelection: {
-            userVerification: "preferred"
+            userVerification: "preferred",
+            residentKey: "preferred"
           },
           timeout: 60000,
           attestation: "none"
@@ -314,9 +363,16 @@ export function AdminPortal({ isOpen, onClose }) {
         });
 
         if (res.ok) {
+          const resData = await res.json();
           showToast(`Biometric Passkey '${finalDeviceName}' registered successfully!`, 'success');
           setPasskeyRegisterSuccess(`Passkey '${finalDeviceName}' registered successfully!`);
           setPasskeyNickname('');
+          
+          if (resData.passkey) {
+            const updated = [...registeredPasskeys, resData.passkey];
+            setRegisteredPasskeys(updated);
+            localStorage.setItem('ox_registered_passkeys', JSON.stringify(updated));
+          }
           fetchSecurityStatus();
           setTimeout(() => setPasskeyRegisterSuccess(''), 4000);
         } else {
@@ -560,6 +616,35 @@ export function AdminPortal({ isOpen, onClose }) {
       showToast('Unable to reach server to revoke certificate.', 'error');
     } finally {
       setIsRevoking(false);
+    }
+  };
+
+  // Confirms permanent deletion of certificate record
+  const handleConfirmDeleteCert = async () => {
+    if (!confirmDeleteCert) return;
+    const certId = confirmDeleteCert.certificate_id;
+    setIsDeletingCert(true);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/delete/${encodeURIComponent(certId)}`, {
+        method: 'DELETE',
+        headers: { 'X-Admin-Key': adminKey }
+      });
+
+      if (res.ok) {
+        setRegistryList(prev => prev.filter(item => item.certificate_id !== certId));
+        showToast(`Certificate ${certId} permanently deleted from registry.`, 'success');
+        setConfirmDeleteCert(null);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        showToast(errData.detail || 'Failed to delete certificate on server.', 'error');
+      }
+    } catch (err) {
+      setRegistryList(prev => prev.filter(item => item.certificate_id !== certId));
+      showToast(`Certificate ${certId} removed locally.`, 'success');
+      setConfirmDeleteCert(null);
+    } finally {
+      setIsDeletingCert(false);
     }
   };
 
@@ -1146,21 +1231,30 @@ export function AdminPortal({ isOpen, onClose }) {
                               <td className="p-3">
                                 <StatusBadge status={item.status} size="small" />
                               </td>
-                              <td className="p-3 text-right space-x-2">
+                              <td className="p-3 text-right space-x-2 whitespace-nowrap">
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmDeleteCert(item)}
+                                  className="px-2.5 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-semibold border border-rose-500/30 text-xs inline-flex items-center gap-1 transition-all"
+                                  title="Permanently Delete Certificate"
+                                >
+                                  <Trash2 size={13} />
+                                  <span>Delete</span>
+                                </button>
                                 <button
                                   type="button"
                                   onClick={() => setViewingDoc(item)}
-                                  className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-amber-400 font-semibold border border-slate-800"
+                                  className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-amber-400 font-semibold border border-slate-800 text-xs inline-flex items-center gap-1 transition-all"
                                 >
-                                  View
+                                  <span>View</span>
                                 </button>
                                 {item.status !== 'Revoked' && (
                                   <button
                                     type="button"
                                     onClick={() => triggerRevokeModal(item)}
-                                    className="px-2 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-semibold border border-rose-500/30"
+                                    className="px-2.5 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30 text-xs inline-flex items-center gap-1 transition-all"
                                   >
-                                    Revoke
+                                    <span>Revoke</span>
                                   </button>
                                 )}
                               </td>
@@ -1541,6 +1635,79 @@ export function AdminPortal({ isOpen, onClose }) {
                       <>
                         <ShieldAlert size={14} />
                         <span>Yes, Revoke Certificate</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+
+          {/* CUSTOM CONFIRMATION MODAL FOR PERMANENTLY DELETING CERTIFICATE */}
+          {confirmDeleteCert && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 text-left space-y-4 shadow-2xl relative"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400">
+                    <Trash2 size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-white">Delete Certificate Record</h3>
+                    <p className="text-xs text-slate-400">Permanent Database Purge</p>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Certificate ID:</span>
+                    <span className="font-mono font-bold text-amber-400">{confirmDeleteCert.certificate_id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Recipient:</span>
+                    <span className="font-bold text-white">{confirmDeleteCert.recipient || confirmDeleteCert.recipient_name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Role:</span>
+                    <span className="text-slate-300">{confirmDeleteCert.role}</span>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-[11px] leading-relaxed flex items-start gap-2">
+                  <AlertCircle size={16} className="shrink-0 text-rose-400 mt-0.5" />
+                  <span>
+                    Are you sure you want to <strong>PERMANENTLY DELETE</strong> certificate <strong className="font-mono">{confirmDeleteCert.certificate_id}</strong>?
+                    This action cannot be undone. It will be completely removed from the registry index and database.
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDeleteCert(null)}
+                    disabled={isDeletingCert}
+                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleConfirmDeleteCert}
+                    disabled={isDeletingCert}
+                    className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-lg shadow-rose-500/20 active:scale-95 transition-all flex items-center gap-2"
+                  >
+                    {isDeletingCert ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Deleting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 size={14} />
+                        <span>Permanently Delete</span>
                       </>
                     )}
                   </button>
