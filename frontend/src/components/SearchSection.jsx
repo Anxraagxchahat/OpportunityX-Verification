@@ -75,7 +75,7 @@ export function SearchSection({ onSearch, loading, initialValue = '' }) {
               type="text"
               value={value}
               onChange={(e) => setValue(e.target.value.toUpperCase())}
-              placeholder="Enter Certificate ID (e.g. OX-INT-2026-000145)"
+              placeholder="Enter Certificate ID (e.g. OX-INT-2026-XXXXXX)"
               className="w-full bg-transparent border-none outline-none text-white text-base sm:text-lg font-mono font-semibold placeholder:text-slate-500 placeholder:font-sans placeholder:font-normal px-2 py-3 tracking-wider uppercase"
               disabled={loading}
               autoFocus
