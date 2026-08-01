@@ -2,7 +2,7 @@ import React from 'react';
 import { ShieldCheck, Sun, Sparkles, Lock, Key } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
-export function Navbar({ onOpenAdmin }) {
+export function Navbar() {
   const { theme, toggleTheme } = useTheme();
 
   return (
@@ -41,19 +41,9 @@ export function Navbar({ onOpenAdmin }) {
           </div>
         </div>
 
-        {/* System Online Status, Issuer Admin Button & Theme Controls */}
+        {/* System Online Status & Theme Controls */}
         <div className="flex items-center gap-3">
           
-          {/* Admin Issuer Portal Trigger Button */}
-          <button
-            onClick={onOpenAdmin}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 text-orange-400 text-xs font-semibold active:scale-95 transition-all shadow-sm shadow-orange-500/10"
-            title="Access Secured Admin Certificate Issuance Portal"
-          >
-            <Key size={13} />
-            <span className="hidden xs:inline">Issuer Portal</span>
-          </button>
-
           <div className="flex items-center gap-2 px-2.5 py-1 rounded-md bg-slate-900 border border-slate-800 text-xs font-mono text-slate-300">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
