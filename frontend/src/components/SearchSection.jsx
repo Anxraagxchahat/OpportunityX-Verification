@@ -33,9 +33,9 @@ export function SearchSection({ onSearch, loading, initialValue = '' }) {
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-300 text-[11px] font-semibold tracking-wider uppercase mb-1"
+            className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-600 dark:text-orange-400 text-[11px] font-semibold tracking-wider uppercase mb-1"
           >
-            <ShieldCheck size={13} className="text-orange-400" />
+            <ShieldCheck size={13} className="text-orange-500 dark:text-orange-400" />
             <span>Official Credential Registry</span>
           </motion.div>
 
@@ -43,7 +43,7 @@ export function SearchSection({ onSearch, loading, initialValue = '' }) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.05 }}
-            className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-white"
+            className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white"
           >
             Opportunity<span className="text-orange-500">X</span> Verification Portal
           </motion.h1>
@@ -52,7 +52,7 @@ export function SearchSection({ onSearch, loading, initialValue = '' }) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className="text-sm sm:text-base text-slate-400 max-w-xl mx-auto font-normal leading-relaxed"
+            className="text-sm sm:text-base text-slate-600 dark:text-slate-400 max-w-xl mx-auto font-normal leading-relaxed"
           >
             Verify certificates, credentials, and achievements issued by OpportunityX.
           </motion.p>
@@ -66,9 +66,9 @@ export function SearchSection({ onSearch, loading, initialValue = '' }) {
           onSubmit={handleSubmit}
           className="relative max-w-2xl mx-auto"
         >
-          <div className="relative flex items-center p-1.5 rounded-2xl bg-[#0B0D14] border border-slate-700/80 hover:border-slate-600 focus-within:border-orange-500/90 focus-within:ring-4 focus-within:ring-orange-500/10 shadow-2xl transition-all duration-200">
+          <div className="relative flex items-center p-1.5 rounded-2xl bg-white dark:bg-[#0B0D14] border border-slate-300 dark:border-slate-700/80 hover:border-slate-400 dark:hover:border-slate-600 focus-within:border-orange-500/90 focus-within:ring-4 focus-within:ring-orange-500/10 shadow-xl transition-all duration-200">
             <div className="pl-4 pr-2 text-slate-400 flex items-center">
-              <Search size={20} className="text-slate-400 group-focus-within:text-orange-400" />
+              <Search size={20} className="text-slate-400 group-focus-within:text-orange-500" />
             </div>
 
             <input
@@ -76,7 +76,7 @@ export function SearchSection({ onSearch, loading, initialValue = '' }) {
               value={value}
               onChange={(e) => setValue(e.target.value.toUpperCase())}
               placeholder="Enter Certificate ID (e.g. OX-INT-2026-XXXXXX)"
-              className="w-full bg-transparent border-none outline-none text-white text-base sm:text-lg font-mono font-semibold placeholder:text-slate-500 placeholder:font-sans placeholder:font-normal px-2 py-3 tracking-wider uppercase"
+              className="w-full bg-transparent border-none outline-none text-slate-900 dark:text-white text-base sm:text-lg font-mono font-semibold placeholder:text-slate-400 dark:placeholder:text-slate-500 placeholder:font-sans placeholder:font-normal px-2 py-3 tracking-wider uppercase"
               disabled={loading}
               autoFocus
               aria-label="Enter Certificate ID"
@@ -86,7 +86,7 @@ export function SearchSection({ onSearch, loading, initialValue = '' }) {
               <button
                 type="button"
                 onClick={handleClear}
-                className="p-2 text-slate-500 hover:text-slate-300 transition-colors"
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                 title="Clear input"
               >
                 <X size={18} />
@@ -123,9 +123,9 @@ export function SearchSection({ onSearch, loading, initialValue = '' }) {
           {TRUST_INDICATORS.map((item, idx) => {
             const Icon = item.icon;
             return (
-              <div key={idx} className="flex items-center gap-1.5 bg-slate-900/60 border border-slate-800/80 px-3 py-1 rounded-md">
-                <Icon size={13} className="text-orange-400 shrink-0" />
-                <span className="font-medium text-slate-300">{item.label}</span>
+              <div key={idx} className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 px-3 py-1 rounded-md">
+                <Icon size={13} className="text-orange-500 dark:text-orange-400 shrink-0" />
+                <span className="font-medium text-slate-700 dark:text-slate-300">{item.label}</span>
               </div>
             );
           })}
