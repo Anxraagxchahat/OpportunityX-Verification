@@ -39,8 +39,7 @@ const API_BASE = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https
 const TOTP_URL = `otpauth://totp/OpportunityX%20Admin:admin@opportunityx.co.in?secret=${TOTP_SECRET}&issuer=OpportunityX%20Admin%20Registry`;
 
 export function AdminPortal({ isOpen, onClose }) {
-  const [adminKey, setAdminKey] = useState(() => localStorage.getItem('ox_admin_key') || DEFAULT_KEY);
-  const [inputKey, setInputKey] = useState('');
+  const [adminKey, setAdminKey] = useState(() => localStorage.getItem('ox_admin_key') || TOTP_SECRET);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authError, setAuthError] = useState('');
   const [activeTab, setActiveTab] = useState('generator'); // 'generator' | 'list' | 'settings'
@@ -53,25 +52,12 @@ export function AdminPortal({ isOpen, onClose }) {
   const [isRevoking, setIsRevoking] = useState(false);
   const [confirmDeleteCert, setConfirmDeleteCert] = useState(null); // Certificate object to delete
   const [isDeletingCert, setIsDeletingCert] = useState(false);
-  const [confirmDeletePasskey, setConfirmDeletePasskey] = useState(null); // Passkey object
-  const [isDeletingPasskey, setIsDeletingPasskey] = useState(false);
-  const [passkeyNickname, setPasskeyNickname] = useState('');
 
-  // Auth Methods: 'secret' | 'totp' | 'passkey'
-  const [authMethod, setAuthMethod] = useState('secret');
+  // Auth State (Exclusively Google Authenticator 6-digit TOTP)
   const [totpCode, setTotpCode] = useState('');
-  const [passkeyVerifying, setPasskeyVerifying] = useState(false);
 
   // Security Enrollment State (Managed inside Settings)
-  const [is2faEnabled, setIs2faEnabled] = useState(false);
-  const [registeredPasskeys, setRegisteredPasskeys] = useState(() => {
-    try {
-      const local = localStorage.getItem('ox_registered_passkeys');
-      return local ? JSON.parse(local) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  const [is2faEnabled, setIs2faEnabled] = useState(true);
   const [showQrModal, setShowQrModal] = useState(false);
   const [copiedSecret, setCopiedSecret] = useState(false);
 
@@ -108,20 +94,13 @@ export function AdminPortal({ isOpen, onClose }) {
   const [loadingList, setLoadingList] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
 
-  // Key Settings State
-  const [newAdminKey, setNewAdminKey] = useState('');
-  const [showKey, setShowKey] = useState(false);
-  const [keyUpdateSuccess, setKeyUpdateSuccess] = useState('');
-
   // Enrollment Settings Form State
   const [setupTotpCode, setSetupTotpCode] = useState('');
   const [totpEnableSuccess, setTotpEnableSuccess] = useState('');
-  const [passkeyRegisterSuccess, setPasskeyRegisterSuccess] = useState('');
 
   // Explicit session logout / lock
   const handleLogout = () => {
     setIsAuthenticated(false);
-    setInputKey('');
     setTotpCode('');
     setAuthError('');
     setIssuedResult(null);
@@ -133,56 +112,15 @@ export function AdminPortal({ isOpen, onClose }) {
     handleLogout();
   }, []);
 
-  const handleAuthenticate = async (keyToTest) => {
-    setAuthError('');
-    const testKey = (keyToTest || inputKey).trim();
-
-    if (!testKey) {
-      setAuthError('Please enter a valid Admin Secret Key.');
-      return;
-    }
-
-    try {
-      const res = await fetch(`${API_BASE}/api/admin/verify-key`, {
-        headers: { 'X-Admin-Key': testKey }
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const activeKey = data.admin_key || testKey;
-        setIsAuthenticated(true);
-        setAdminKey(activeKey);
-        localStorage.setItem('ox_admin_key', activeKey);
-        fetchRegistryList(activeKey);
-        fetchSecurityStatus();
-      } else {
-        const errorData = await res.json().catch(() => ({}));
-        setAuthError(errorData.detail || 'Invalid Security Key. Access Denied.');
-        setIsAuthenticated(false);
-      }
-    } catch (err) {
-      setAuthError('Unable to verify key with server.');
-      setIsAuthenticated(false);
-    }
-  };
-
   const fetchSecurityStatus = async () => {
     try {
       const res = await fetch(`${API_BASE}/api/admin/security/status`);
       if (res.ok) {
         const data = await res.json();
-        setIs2faEnabled(data.is_2fa_enabled);
-        const pks = data.registered_passkeys || [];
-        setRegisteredPasskeys(pks);
-        localStorage.setItem('ox_registered_passkeys', JSON.stringify(pks));
+        setIs2faEnabled(data.is_2fa_enabled ?? true);
       }
     } catch (err) {
-      try {
-        const localPks = JSON.parse(localStorage.getItem('ox_registered_passkeys') || '[]');
-        if (localPks.length > 0) {
-          setRegisteredPasskeys(localPks);
-        }
-      } catch (e) {}
+      console.warn('Security status fetch fallback');
     }
   };
 
@@ -212,7 +150,7 @@ export function AdminPortal({ isOpen, onClose }) {
         fetchSecurityStatus();
       } else {
         const data = await res.json().catch(() => ({}));
-        setAuthError(data.detail || 'Invalid TOTP code. Check your phone app.');
+        setAuthError(data.detail || 'Invalid TOTP code. Check your Google Authenticator app.');
         setIsAuthenticated(false);
       }
     } catch (err) {
@@ -221,200 +159,7 @@ export function AdminPortal({ isOpen, onClose }) {
     }
   };
 
-  // Standard WebAuthn Biometric Passkey Verification on Login
-  const handlePasskeyAuth = async () => {
-    setAuthError('');
-    setPasskeyVerifying(true);
-
-    if (!window.PublicKeyCredential) {
-      setAuthError('WebAuthn / Passkeys are not supported in your browser.');
-      setPasskeyVerifying(false);
-      return;
-    }
-
-    try {
-      const challenge = new Uint8Array(32);
-      window.crypto.getRandomValues(challenge);
-
-      const parseCredId = (idStr) => {
-        try {
-          return new TextEncoder().encode(idStr);
-        } catch (e) {
-          return null;
-        }
-      };
-
-      const allowCreds = (registeredPasskeys || [])
-        .map(pk => parseCredId(pk.credential_id))
-        .filter(b => b && b.length > 0)
-        .map(id => ({ id, type: 'public-key' }));
-
-      const getOptions = {
-        publicKey: {
-          challenge,
-          timeout: 60000,
-          userVerification: "preferred"
-        }
-      };
-
-      if (allowCreds.length > 0) {
-        getOptions.publicKey.allowCredentials = allowCreds;
-      }
-
-      let credential = null;
-      try {
-        credential = await navigator.credentials.get(getOptions);
-      } catch (getErr) {
-        if (allowCreds.length > 0) {
-          delete getOptions.publicKey.allowCredentials;
-          credential = await navigator.credentials.get(getOptions);
-        } else {
-          throw getErr;
-        }
-      }
-
-      if (credential && credential.id) {
-        const res = await fetch(`${API_BASE}/api/admin/passkey/verify`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ credential_id: credential.id })
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          const activeKey = data.admin_key || credential.id;
-          setIsAuthenticated(true);
-          setAdminKey(activeKey);
-          localStorage.setItem('ox_admin_key', activeKey);
-          fetchRegistryList(activeKey);
-          fetchSecurityStatus();
-        } else {
-          const data = await res.json().catch(() => ({}));
-          setAuthError(data.detail || 'Passkey credential not recognized by backend.');
-          setIsAuthenticated(false);
-        }
-      } else {
-        setAuthError('No passkey credential received.');
-      }
-    } catch (err) {
-      if (err.name === 'NotAllowedError') {
-        setAuthError('Passkey prompt cancelled or timed out.');
-      } else {
-        setAuthError(err.message || 'Biometric Passkey authentication failed.');
-      }
-      setIsAuthenticated(false);
-    } finally {
-      setPasskeyVerifying(false);
-    }
-  };
-
-  // Register Passkey Device inside Security Settings
-  const handleRegisterPasskeyDevice = async () => {
-    setPasskeyRegisterSuccess('');
-
-    if (!window.PublicKeyCredential) {
-      showToast('WebAuthn / Passkeys are not supported in your browser.', 'error');
-      return;
-    }
-
-    try {
-      const challenge = new Uint8Array(32);
-      window.crypto.getRandomValues(challenge);
-      const userId = new Uint8Array(16);
-      window.crypto.getRandomValues(userId);
-
-      const credential = await navigator.credentials.create({
-        publicKey: {
-          challenge,
-          rp: { name: "OpportunityX Admin Service", id: window.location.hostname },
-          user: {
-            id: userId,
-            name: "admin@opportunityx.co.in",
-            displayName: "OpportunityX Executive Admin"
-          },
-          pubKeyCredParams: [
-            { type: "public-key", alg: -7 },   // ES256
-            { type: "public-key", alg: -257 },  // RS256
-            { type: "public-key", alg: -8 }    // Ed25519
-          ],
-          authenticatorSelection: {
-            userVerification: "preferred",
-            residentKey: "preferred"
-          },
-          timeout: 60000,
-          attestation: "none"
-        }
-      });
-
-      if (credential && credential.id) {
-        const defaultLabel = navigator.userAgent.includes('Mobile') ? 'Smartphone Passkey' : 'Workstation Passkey';
-        const finalDeviceName = passkeyNickname.trim() || defaultLabel;
-
-        const res = await fetch(`${API_BASE}/api/admin/passkey/register`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Admin-Key': adminKey
-          },
-          body: JSON.stringify({
-            credential_id: credential.id,
-            device_name: finalDeviceName
-          })
-        });
-
-        if (res.ok) {
-          const resData = await res.json();
-          showToast(`Biometric Passkey '${finalDeviceName}' registered successfully!`, 'success');
-          setPasskeyRegisterSuccess(`Passkey '${finalDeviceName}' registered successfully!`);
-          setPasskeyNickname('');
-          
-          if (resData.passkey) {
-            const updated = [...registeredPasskeys, resData.passkey];
-            setRegisteredPasskeys(updated);
-            localStorage.setItem('ox_registered_passkeys', JSON.stringify(updated));
-          }
-          fetchSecurityStatus();
-          setTimeout(() => setPasskeyRegisterSuccess(''), 4000);
-        } else {
-          const errData = await res.json().catch(() => ({}));
-          showToast(errData.detail || 'Failed to register passkey with backend.', 'error');
-        }
-      }
-    } catch (err) {
-      if (err.name !== 'NotAllowedError') {
-        showToast(`Passkey Registration Error: ${err.message || 'Cancelled by user.'}`, 'error');
-      }
-    }
-  };
-
-  // Delete Passkey device action
-  const handleConfirmDeletePasskey = async () => {
-    if (!confirmDeletePasskey) return;
-    const credId = confirmDeletePasskey.credential_id;
-    setIsDeletingPasskey(true);
-
-    try {
-      const res = await fetch(`${API_BASE}/api/admin/passkey/delete/${encodeURIComponent(credId)}`, {
-        method: 'DELETE',
-        headers: { 'X-Admin-Key': adminKey }
-      });
-
-      if (res.ok) {
-        showToast('Passkey device removed permanently.', 'success');
-        setConfirmDeletePasskey(null);
-        fetchSecurityStatus();
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        showToast(errData.detail || 'Failed to delete passkey from backend.', 'error');
-      }
-    } catch (err) {
-      showToast('Unable to reach server to delete passkey.', 'error');
-    } finally {
-      setIsDeletingPasskey(false);
-    }
-  };
-
-  // Enable / Link 2FA inside Settings
+  // Enable / Test 2FA inside Settings
   const handleEnable2FAInSettings = async (e) => {
     e.preventDefault();
     if (setupTotpCode.trim().length !== 6) {
@@ -434,13 +179,13 @@ export function AdminPortal({ isOpen, onClose }) {
 
       if (res.ok) {
         setIs2faEnabled(true);
-        setTotpEnableSuccess('Google Authenticator 2FA is now ENABLED & LINKED!');
-        showToast('Google Authenticator 2FA is now ENABLED & LINKED!', 'success');
+        setTotpEnableSuccess('Google Authenticator 2FA Verified & Active!');
+        showToast('Google Authenticator 2FA Verified & Active!', 'success');
         setSetupTotpCode('');
         setTimeout(() => setTotpEnableSuccess(''), 4000);
       } else {
         const errData = await res.json().catch(() => ({}));
-        showToast(errData.detail || "Invalid code. Please enter the current 6-digit OTP from your phone app.", "error");
+        showToast(errData.detail || "Invalid code. Please enter the current 6-digit OTP from your Google Authenticator app.", "error");
       }
     } catch (err) {
       showToast("Unable to reach server to enable 2FA.", "error");
@@ -662,14 +407,14 @@ export function AdminPortal({ isOpen, onClose }) {
           {/* Header Bar */}
           <div className="flex items-center justify-between p-5 border-b border-slate-800 bg-slate-950/60">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-orange-500/10 border border-orange-500/30 text-orange-400">
-                <ShieldCheck size={22} />
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                <Smartphone size={22} />
               </div>
               <div>
                 <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
                   <span>OpportunityX Admin Certificate Portal</span>
-                  <span className="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-mono font-bold">
-                    SECURED (ECDSA-256)
+                  <span className="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-mono font-bold">
+                    GOOGLE AUTHENTICATOR (TOTP 2FA)
                   </span>
                 </h2>
                 <p className="text-xs text-slate-400">Official Issuer Portal • Digitally Signed Credential Engine</p>
@@ -702,170 +447,57 @@ export function AdminPortal({ isOpen, onClose }) {
             </div>
           </div>
 
-          {/* SECURE LOCK SCREEN */}
+          {/* SECURE GOOGLE AUTHENTICATOR LOCK SCREEN */}
           {!isAuthenticated ? (
-            <div className="p-6 sm:p-10 text-center max-w-lg mx-auto space-y-6">
-              <div className="w-14 h-14 mx-auto rounded-2xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400 shadow-xl shadow-orange-500/10">
-                <Lock size={28} />
+            <div className="p-6 sm:p-10 text-center max-w-md mx-auto space-y-6">
+              <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-xl shadow-amber-500/10">
+                <Smartphone size={32} />
               </div>
 
               <div>
-                <h3 className="text-xl font-extrabold text-white">Issuer Security Authentication</h3>
+                <h3 className="text-xl font-extrabold text-white">Google Authenticator Required</h3>
                 <p className="text-xs text-slate-400 mt-1">
-                  Authenticate with your Secret Master Key, Google 2FA, or Biometric Passkey.
+                  Enter the 6-digit TOTP verification code from your Google Authenticator phone app. Passcodes continuously reset every 30 seconds for maximum security.
                 </p>
               </div>
 
-              {/* AUTH METHOD SELECTION TABS */}
-              <div className="flex p-1 rounded-xl bg-slate-950 border border-slate-800 gap-1">
-                <button
-                  type="button"
-                  onClick={() => { setAuthMethod('secret'); setAuthError(''); }}
-                  className={`flex-1 py-2 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                    authMethod === 'secret'
-                      ? 'bg-orange-500 text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <Key size={14} />
-                  <span>Master Key</span>
-                </button>
+              <div className="space-y-4 pt-2">
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                    Enter 6-Digit Verification Code
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    autoFocus
+                    value={totpCode}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setTotpCode(val);
+                      if (val.length === 6 && /^\d+$/.test(val)) {
+                        handleTotpAuth(val);
+                      }
+                    }}
+                    placeholder="000000"
+                    className="w-full py-3.5 text-center tracking-[0.4em] rounded-2xl bg-slate-900 border border-amber-500/40 text-amber-400 font-mono font-black text-3xl placeholder-slate-700 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 shadow-inner transition-all"
+                    onKeyDown={(e) => e.key === 'Enter' && handleTotpAuth()}
+                  />
+                </div>
 
                 <button
                   type="button"
-                  onClick={() => { setAuthMethod('totp'); setAuthError(''); }}
-                  className={`flex-1 py-2 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                    authMethod === 'totp'
-                      ? 'bg-orange-500 text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
+                  onClick={() => handleTotpAuth()}
+                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-sm shadow-xl shadow-amber-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                 >
-                  <Smartphone size={14} />
-                  <span>Google 2FA</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => { setAuthMethod('passkey'); setAuthError(''); }}
-                  className={`flex-1 py-2 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all ${
-                    authMethod === 'passkey'
-                      ? 'bg-orange-500 text-white shadow-md'
-                      : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <Fingerprint size={14} />
-                  <span>Passkey</span>
+                  <ShieldCheck size={18} />
+                  <span>Verify Google Authenticator Code</span>
                 </button>
               </div>
 
-              {/* OPTION 1: MASTER SECRET KEY */}
-              {authMethod === 'secret' && (
-                <div className="space-y-3 pt-2">
-                  <div className="relative">
-                    <Key size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
-                    <input
-                      type={showKey ? "text" : "password"}
-                      value={inputKey}
-                      onChange={(e) => setInputKey(e.target.value)}
-                      placeholder="Enter Admin Secret Key..."
-                      className="w-full pl-10 pr-10 py-3 rounded-xl bg-slate-900 border border-slate-800 text-white placeholder-slate-500 text-sm font-mono focus:outline-none focus:border-orange-500 transition-colors"
-                      onKeyDown={(e) => e.key === 'Enter' && handleAuthenticate()}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowKey(!showKey)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                    >
-                      {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleAuthenticate()}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-sm shadow-lg shadow-orange-500/20 active:scale-95 transition-all"
-                  >
-                    Authenticate & Unlock Portal
-                  </button>
-                </div>
-              )}
-
-              {/* OPTION 2: GOOGLE AUTHENTICATOR (6-DIGIT OTP) */}
-              {authMethod === 'totp' && (
-                <div className="space-y-4 pt-2">
-                  <div className="space-y-2">
-                    <label className="block text-xs font-semibold text-slate-300">
-                      Enter 6-Digit Code from Google Authenticator App
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={6}
-                      value={totpCode}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setTotpCode(val);
-                        if (val.length === 6 && /^\d+$/.test(val)) {
-                          handleTotpAuth(val);
-                        }
-                      }}
-                      placeholder="000000"
-                      className="w-full py-3 text-center tracking-[0.4em] rounded-xl bg-slate-900 border border-slate-800 text-amber-400 font-mono font-black text-2xl placeholder-slate-600 focus:outline-none focus:border-orange-500"
-                      onKeyDown={(e) => e.key === 'Enter' && handleTotpAuth()}
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleTotpAuth()}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-sm shadow-lg shadow-orange-500/20 active:scale-95 transition-all"
-                  >
-                    Verify 6-Digit Code
-                  </button>
-                  <p className="text-[11px] text-slate-500">
-                    2FA & QR pairing setup is configured inside <strong>Security & Key Settings</strong> after login.
-                  </p>
-                </div>
-              )}
-
-              {/* OPTION 3: WEBAUTHN FINGERPRINT / PASSKEY */}
-              {authMethod === 'passkey' && (
-                <div className="space-y-4 py-2">
-                  <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-                    <div className="w-12 h-12 mx-auto rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
-                      <Fingerprint size={28} />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-white">Biometric Passkey Login</h4>
-                      <p className="text-xs text-slate-400">
-                        Authenticate with your registered device fingerprint or Face ID.
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handlePasskeyAuth}
-                    disabled={passkeyVerifying}
-                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold text-sm shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
-                  >
-                    {passkeyVerifying ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        <span>Prompting Fingerprint Scanner...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Fingerprint size={20} />
-                        <span>Authenticate with Fingerprint / Face ID</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
-
               {authError && (
-                <p className="text-xs font-semibold text-rose-400 flex items-center justify-center gap-1 pt-1">
-                  <AlertCircle size={13} /> {authError}
+                <p className="text-xs font-semibold text-rose-400 flex items-center justify-center gap-1 pt-1 bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/20">
+                  <AlertCircle size={14} className="shrink-0" />
+                  <span>{authError}</span>
                 </p>
               )}
             </div>
@@ -1266,54 +898,50 @@ export function AdminPortal({ isOpen, onClose }) {
                 </div>
               )}
 
-              {/* TAB 3: AUTHENTICATED SECURITY & ENROLLMENT SETTINGS */}
+              {/* TAB 3: AUTHENTICATED SECURITY & GOOGLE AUTHENTICATOR SETTINGS */}
               {activeTab === 'settings' && (
-                <div className="p-6 sm:p-8 space-y-6 max-h-[75vh] overflow-y-auto max-w-3xl mx-auto">
+                <div className="p-6 sm:p-8 space-y-6 max-h-[75vh] overflow-y-auto max-w-2xl mx-auto">
                   
-                  {/* SECTION 1: GOOGLE AUTHENTICATOR (2FA SETUP & PAIRING) */}
-                  <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
-                      <div className="flex items-center gap-2">
-                        <Smartphone className="text-amber-400" size={20} />
+                  {/* GOOGLE AUTHENTICATOR 2FA ENROLLMENT & QR CONFIG */}
+                  <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-5 shadow-xl">
+                    <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                          <Smartphone size={22} />
+                        </div>
                         <div>
-                          <h3 className="text-base font-extrabold text-white">Google Authenticator (2FA Enrollment)</h3>
-                          <p className="text-xs text-slate-400">Configure 30-second rotating 6-digit OTP codes for Admin Login.</p>
+                          <h3 className="text-base font-extrabold text-white">Google Authenticator (TOTP 2FA)</h3>
+                          <p className="text-xs text-slate-400">Primary authentication mechanism with 30-second passcode resets.</p>
                         </div>
                       </div>
                       <div>
-                        {is2faEnabled ? (
-                          <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center gap-1.5">
-                            <CheckCircle2 size={13} /> 2FA Active & Linked
-                          </span>
-                        ) : (
-                          <span className="px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold flex items-center gap-1.5">
-                            <AlertCircle size={13} /> Setup Pending
-                          </span>
-                        )}
+                        <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center gap-1.5">
+                          <CheckCircle2 size={13} /> 2FA Active & Enforced
+                        </span>
                       </div>
                     </div>
 
                     {/* SETUP QR DISPLAY BUTTON & MODAL LAUNCH */}
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-slate-900 border border-slate-800">
                       <div className="space-y-1 text-center sm:text-left">
-                        <span className="text-xs font-bold text-white block">Step 1: Scan Mobile QR Code</span>
-                        <span className="text-[11px] text-slate-400 block">Open Google Authenticator on your phone and scan the setup QR code.</span>
+                        <span className="text-xs font-bold text-white block">Pair Mobile Device</span>
+                        <span className="text-[11px] text-slate-400 block">Open Google Authenticator on your phone and scan the QR code or enter secret key.</span>
                       </div>
 
                       <button
                         type="button"
                         onClick={() => setShowQrModal(true)}
-                        className="px-4 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all shadow-md"
+                        className="px-4 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all shadow-md active:scale-95"
                       >
                         <QrCode size={16} />
-                        <span>Scan Mobile QR Code</span>
+                        <span>Show QR Code & Secret</span>
                       </button>
                     </div>
 
-                    {/* VERIFY & ACTIVATE 2FA FORM */}
-                    <form onSubmit={handleEnable2FAInSettings} className="space-y-3 pt-1">
+                    {/* VERIFY & TEST CURRENT 6-DIGIT CODE */}
+                    <form onSubmit={handleEnable2FAInSettings} className="space-y-3 pt-2">
                       <label className="block text-xs font-semibold text-slate-300">
-                        Step 2: Enter Current 6-Digit Code from Phone App to Confirm & Activate 2FA
+                        Test Current 6-Digit Code from Phone App
                       </label>
                       <div className="flex gap-2">
                         <input
@@ -1322,13 +950,13 @@ export function AdminPortal({ isOpen, onClose }) {
                           value={setupTotpCode}
                           onChange={(e) => setSetupTotpCode(e.target.value)}
                           placeholder="000000"
-                          className="flex-1 px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-amber-400 font-mono font-bold text-sm tracking-widest placeholder-slate-600 focus:outline-none focus:border-orange-500"
+                          className="flex-1 px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-amber-400 font-mono font-bold text-sm tracking-widest placeholder-slate-600 focus:outline-none focus:border-amber-500"
                         />
                         <button
                           type="submit"
                           className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-bold text-xs shadow-md active:scale-95 transition-all"
                         >
-                          Verify & Enable 2FA
+                          Test & Verify
                         </button>
                       </div>
 
@@ -1339,168 +967,12 @@ export function AdminPortal({ isOpen, onClose }) {
                       )}
                     </form>
                   </div>
-
-                  {/* SECTION 2: WEBAUTHN BIOMETRIC PASSKEY ENROLLMENT */}
-                  <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
-                    <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
-                      <div className="flex items-center gap-2">
-                        <Fingerprint className="text-emerald-400" size={20} />
-                        <div>
-                          <h3 className="text-base font-extrabold text-white">Biometric Passkey Management</h3>
-                          <p className="text-xs text-slate-400">Register and manage device fingerprints, PINs, or Touch ID for 1-click login.</p>
-                        </div>
-                      </div>
-                      <div>
-                        <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center gap-1.5">
-                          <Fingerprint size={13} /> {registeredPasskeys.length > 0 ? `${registeredPasskeys.length} Device${registeredPasskeys.length > 1 ? 's' : ''}` : '0 Devices'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* REGISTER NEW DEVICE INPUT + ACTION */}
-                    <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-3">
-                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                        <div className="space-y-1 text-center sm:text-left w-full sm:w-auto">
-                          <span className="text-xs font-bold text-white block">Register New Passkey Device</span>
-                          <span className="text-[11px] text-slate-400 block">Enter a custom nickname for this device before triggering biometric scan.</span>
-                        </div>
-
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
-                          <input
-                            type="text"
-                            value={passkeyNickname}
-                            onChange={(e) => setPasskeyNickname(e.target.value)}
-                            placeholder="Device Nickname (e.g. Work PC Pin)"
-                            className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-emerald-500 flex-1 sm:w-48"
-                          />
-                          <button
-                            type="button"
-                            onClick={handleRegisterPasskeyDevice}
-                            className="px-4 py-2 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all shadow-md active:scale-95"
-                          >
-                            <Fingerprint size={15} />
-                            <span>Scan Passkey</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {passkeyRegisterSuccess && (
-                        <p className="text-xs font-bold text-emerald-400 flex items-center gap-1 pt-1">
-                          <CheckCircle2 size={14} /> {passkeyRegisterSuccess}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* REGISTERED PASSKEYS DEVICE LIST TABLE */}
-                    <div className="space-y-2 pt-2">
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">
-                        Active Registered Passkey Devices ({registeredPasskeys.length})
-                      </h4>
-
-                      {registeredPasskeys.length === 0 ? (
-                        <div className="p-4 rounded-xl bg-slate-900/50 border border-slate-800 text-center text-xs text-slate-500 font-mono">
-                          No registered passkey devices found. Click "Scan Passkey" above to pair your current device.
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {registeredPasskeys.map((passkey, idx) => (
-                            <div key={idx} className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-3 hover:border-slate-700 transition-all">
-                              <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                                  {passkey.device_name?.toLowerCase().includes('phone') || passkey.device_name?.toLowerCase().includes('mobile') ? (
-                                    <Smartphone size={18} />
-                                  ) : (
-                                    <Laptop size={18} />
-                                  )}
-                                </div>
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs font-bold text-white">{passkey.device_name || 'Registered Device'}</span>
-                                    <span className="px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-mono text-slate-400 flex items-center gap-1 border border-slate-700">
-                                      <Globe size={10} className="text-emerald-400" />
-                                      <span>{passkey.ip_address || '127.0.0.1'}</span>
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-3 text-[11px] text-slate-400 mt-0.5">
-                                    <span>Registered: <strong className="text-slate-300 font-mono">{passkey.registered_at || 'Recent'}</strong></span>
-                                    <span>•</span>
-                                    <span className="font-mono text-[10px] text-slate-500">ID: {passkey.credential_id?.slice(0, 14)}...</span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={() => setConfirmDeletePasskey(passkey)}
-                                className="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all"
-                                title="Delete / Remove Passkey Device"
-                              >
-                                <Trash2 size={14} />
-                                <span className="hidden sm:inline">Delete</span>
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                  </div>
-
-                  {/* SECTION 3: MASTER SECRET KEY CONFIG */}
-                  <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
-                    <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                      <Key className="text-orange-400" size={18} />
-                      <span>Admin Master Secret Key Configuration</span>
-                    </h3>
-
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      You can change your Admin Secret Key anytime. The key is validated using timing-attack proof cryptographic hashing.
-                    </p>
-
-                    <form onSubmit={handleUpdateKey} className="space-y-4 pt-2">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-300 mb-1">
-                          Current Active Admin Key
-                        </label>
-                        <div className="p-2.5 bg-slate-900 rounded-xl border border-slate-800 text-xs font-mono text-amber-400 select-all">
-                          {adminKey.slice(0, 10)}******************
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-300 mb-1">
-                          Set New Custom Admin Key (Min 8 Characters)
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={newAdminKey}
-                          onChange={(e) => setNewAdminKey(e.target.value)}
-                          placeholder="e.g. MySuperSecretAdminKey2026!"
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-white placeholder-slate-500 text-xs font-mono focus:outline-none focus:border-orange-500"
-                        />
-                      </div>
-
-                      {keyUpdateSuccess && (
-                        <p className="text-xs font-bold text-emerald-400 flex items-center gap-1">
-                          <CheckCircle2 size={14} /> {keyUpdateSuccess}
-                        </p>
-                      )}
-
-                      <button
-                        type="submit"
-                        className="w-full py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs shadow-md shadow-orange-500/20 active:scale-95 transition-all"
-                      >
-                        Update Admin Security Key
-                      </button>
-                    </form>
-                  </div>
                 </div>
               )}
             </div>
           )}
 
-          {/* GOOGLE AUTHENTICATOR SETUP QR MODAL (INSIDE AUTHENTICATED SETTINGS) */}
+          {/* GOOGLE AUTHENTICATOR SETUP QR MODAL */}
           {showQrModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
               <motion.div
@@ -1716,74 +1188,7 @@ export function AdminPortal({ isOpen, onClose }) {
             </div>
           )}
 
-          {/* CUSTOM CONFIRMATION MODAL FOR DELETING PASSKEY DEVICE */}
-          {confirmDeletePasskey && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 text-left space-y-4 shadow-2xl relative"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400">
-                    <Trash2 size={24} />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-extrabold text-white">Delete Biometric Passkey</h3>
-                    <p className="text-xs text-slate-400">Unlink Biometric Credential</p>
-                  </div>
-                </div>
 
-                <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1.5 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Device Name:</span>
-                    <span className="font-bold text-white">{confirmDeletePasskey.device_name || 'Passkey Device'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">IP Address:</span>
-                    <span className="font-mono text-emerald-400">{confirmDeletePasskey.ip_address || '127.0.0.1'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Credential ID:</span>
-                    <span className="font-mono text-slate-400">{confirmDeletePasskey.credential_id?.slice(0, 16)}...</span>
-                  </div>
-                </div>
-
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Are you sure you want to remove this passkey device? You will no longer be able to authenticate with this device's biometric scanner.
-                </p>
-
-                <div className="flex items-center justify-end gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDeletePasskey(null)}
-                    disabled={isDeletingPasskey}
-                    className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleConfirmDeletePasskey}
-                    disabled={isDeletingPasskey}
-                    className="px-5 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs shadow-lg shadow-rose-500/20 active:scale-95 transition-all flex items-center gap-2"
-                  >
-                    {isDeletingPasskey ? (
-                      <>
-                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        <span>Removing...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 size={14} />
-                        <span>Delete Passkey</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
 
           {/* TOAST NOTIFICATION OVERLAY */}
           {toast && (
