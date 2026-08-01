@@ -405,23 +405,27 @@ export function AdminPortal({ isOpen, onClose }) {
           className="relative w-full max-w-5xl bg-[#0B0D14] border border-slate-800 rounded-3xl shadow-2xl overflow-hidden my-4"
         >
           {/* Header Bar */}
-          <div className="flex items-center justify-between p-5 border-b border-slate-800 bg-slate-950/80 light-mode-header">
+          <div className="flex items-center justify-between p-5 border-b border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-950/80 light-mode-header">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400">
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 shrink-0">
                 <Smartphone size={22} />
               </div>
-              <div>
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-                  <span>OpportunityX Admin Certificate Portal</span>
-                  <span className="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-[10px] font-mono font-bold">
+              <div className="flex flex-col gap-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white tracking-tight">
+                    OpportunityX Admin Certificate Portal
+                  </h2>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-[10px] font-mono font-bold whitespace-nowrap shrink-0">
                     GOOGLE AUTHENTICATOR (TOTP 2FA)
                   </span>
-                </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Official Issuer Portal • Digitally Signed Credential Engine</p>
+                </div>
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                  Official Issuer Portal • Digitally Signed Credential Engine
+                </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               {isAuthenticated && (
                 <button
                   type="button"
@@ -439,7 +443,7 @@ export function AdminPortal({ isOpen, onClose }) {
                   handleLogout();
                   onClose();
                 }}
-                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800 transition-colors"
+                className="p-2 rounded-xl bg-slate-200 dark:bg-slate-900 hover:bg-slate-300 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-300 dark:border-slate-800 transition-colors"
                 title="Close Portal"
               >
                 ✕
@@ -450,20 +454,20 @@ export function AdminPortal({ isOpen, onClose }) {
           {/* SECURE GOOGLE AUTHENTICATOR LOCK SCREEN */}
           {!isAuthenticated ? (
             <div className="p-6 sm:p-10 text-center max-w-md mx-auto space-y-6">
-              <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-xl shadow-amber-500/10">
+              <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-xl shadow-amber-500/10">
                 <Smartphone size={32} />
               </div>
 
               <div>
-                <h3 className="text-xl font-extrabold text-white">Google Authenticator Required</h3>
-                <p className="text-xs text-slate-400 mt-1">
+                <h3 className="text-xl font-black text-slate-900 dark:text-white">Google Authenticator Required</h3>
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-2 leading-relaxed">
                   Enter the 6-digit TOTP verification code from your Google Authenticator phone app. Passcodes continuously reset every 30 seconds for maximum security.
                 </p>
               </div>
 
               <div className="space-y-4 pt-2">
                 <div className="space-y-2">
-                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                     Enter 6-Digit Verification Code
                   </label>
                   <input
@@ -479,7 +483,7 @@ export function AdminPortal({ isOpen, onClose }) {
                       }
                     }}
                     placeholder="000000"
-                    className="w-full py-3.5 text-center tracking-[0.4em] rounded-2xl bg-slate-900 border border-amber-500/40 text-amber-400 font-mono font-black text-3xl placeholder-slate-700 focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 shadow-inner transition-all"
+                    className="w-full py-3.5 text-center tracking-[0.4em] rounded-2xl bg-white dark:bg-slate-900 border-2 border-amber-500/50 text-amber-700 dark:text-amber-400 font-mono font-black text-3xl placeholder-slate-300 dark:placeholder-slate-700 focus:outline-none focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 shadow-lg transition-all"
                     onKeyDown={(e) => e.key === 'Enter' && handleTotpAuth()}
                   />
                 </div>
@@ -495,7 +499,7 @@ export function AdminPortal({ isOpen, onClose }) {
               </div>
 
               {authError && (
-                <p className="text-xs font-semibold text-rose-400 flex items-center justify-center gap-1 pt-1 bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/20">
+                <p className="text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center justify-center gap-1 pt-1 bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/20">
                   <AlertCircle size={14} className="shrink-0" />
                   <span>{authError}</span>
                 </p>
