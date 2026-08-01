@@ -556,30 +556,30 @@ export function AdminPortal({ isOpen, onClose }) {
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="p-6 rounded-2xl bg-slate-900 border border-emerald-500/30 space-y-4 text-center"
+                      className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-500/30 space-y-4 text-center shadow-lg transition-colors duration-300"
                     >
-                      <div className="w-12 h-12 mx-auto rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
+                      <div className="w-12 h-12 mx-auto rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                         <CheckCircle2 size={24} />
                       </div>
 
                       <div>
-                        <h3 className="text-xl font-extrabold text-white">Certificate Successfully Issued!</h3>
-                        <p className="text-xs text-slate-400 mt-1">
+                        <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">Certificate Successfully Issued!</h3>
+                        <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">
                           Digitally signed with ECDSA-256 and registered into the public registry.
                         </p>
                       </div>
 
-                      <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 text-xs font-mono text-slate-300 max-w-md mx-auto space-y-1">
-                        <p><span className="text-slate-500">Record ID:</span> <strong className="text-amber-400">{issuedResult.certificate_id}</strong></p>
-                        <p><span className="text-slate-500">Recipient:</span> <strong className="text-white">{issuedResult.recipient}</strong></p>
-                        <p className="truncate"><span className="text-slate-500">Digital Sig:</span> {issuedResult.digital_signature}</p>
+                      <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-mono text-slate-700 dark:text-slate-300 max-w-md mx-auto space-y-1 text-left sm:text-center">
+                        <p><span className="text-slate-600 dark:text-slate-500 font-semibold">Record ID:</span> <strong className="text-orange-600 dark:text-amber-400">{issuedResult.certificate_id}</strong></p>
+                        <p><span className="text-slate-600 dark:text-slate-500 font-semibold">Recipient:</span> <strong className="text-slate-900 dark:text-white">{issuedResult.recipient}</strong></p>
+                        <p className="truncate"><span className="text-slate-600 dark:text-slate-500 font-semibold">Digital Sig:</span> <span className="text-slate-800 dark:text-slate-300 font-bold">{issuedResult.digital_signature}</span></p>
                       </div>
 
                       <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
                         <button
                           type="button"
                           onClick={() => setViewingDoc(issuedResult)}
-                          className="px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-orange-500/20 transition-all"
+                          className="px-5 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs flex items-center gap-2 shadow-lg shadow-orange-500/20 active:scale-95 transition-all"
                         >
                           <Award size={16} />
                           <span>View Official Certificate</span>
@@ -592,16 +592,16 @@ export function AdminPortal({ isOpen, onClose }) {
                             setCopiedLink(true);
                             setTimeout(() => setCopiedLink(false), 2000);
                           }}
-                          className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center gap-2 transition-all"
+                          className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 font-bold text-xs flex items-center gap-2 transition-all shadow-sm"
                         >
-                          {copiedLink ? <Check size={16} className="text-emerald-400" /> : <Share2 size={16} />}
+                          {copiedLink ? <Check size={16} className="text-emerald-500 dark:text-emerald-400" /> : <Share2 size={16} className="text-orange-500 dark:text-orange-400" />}
                           <span>{copiedLink ? 'Link Copied!' : 'Copy Verification Link'}</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => setIssuedResult(null)}
-                          className="px-4 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-900 border border-slate-800 text-slate-400 hover:text-white font-semibold text-xs flex items-center gap-1.5 transition-colors"
+                          className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 dark:hover:bg-slate-900 border border-slate-300 dark:border-slate-800 text-slate-800 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white font-bold text-xs flex items-center gap-1.5 transition-colors shadow-sm"
                         >
                           <Plus size={16} />
                           <span>Issue Another Certificate</span>
