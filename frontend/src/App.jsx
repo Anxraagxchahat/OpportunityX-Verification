@@ -60,7 +60,7 @@ function VerificationPage() {
       <div className="grid-bg" />
 
       <div>
-        <Navbar onOpenAdmin={() => setIsAdminOpen(true)} />
+        <Navbar />
 
         <main className="container mx-auto px-4 lg:px-8 py-4 sm:py-6 space-y-6">
           {/* Hero & Enterprise Search Focus */}
@@ -107,7 +107,7 @@ function VerificationPage() {
         </main>
       </div>
 
-      <Footer />
+      <Footer onOpenAdmin={() => setIsAdminOpen(true)} />
 
       {/* Admin Issuance & Security Portal */}
       <AdminPortal
