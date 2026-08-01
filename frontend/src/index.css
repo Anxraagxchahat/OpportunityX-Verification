@@ -177,6 +177,32 @@ body.light-mode input::placeholder {
   color: #94A3B8 !important;
 }
 
+body.light-mode .text-emerald-400,
+body.light-mode .text-emerald-600 {
+  color: #059669 !important;
+}
+
+body.light-mode .text-rose-400,
+body.light-mode .text-rose-500,
+body.light-mode .text-rose-600 {
+  color: #E11D48 !important;
+}
+
+body.light-mode .text-amber-400,
+body.light-mode .text-amber-600 {
+  color: #D97706 !important;
+}
+
+body.light-mode .text-yellow-400,
+body.light-mode .text-yellow-600 {
+  color: #CA8A04 !important;
+}
+
+body.light-mode .text-orange-400,
+body.light-mode .text-orange-500 {
+  color: #EA580C !important;
+}
+
 body.light-mode .cyber-glass-card {
   background: #FFFFFF !important;
   border-color: rgba(15, 23, 42, 0.1) !important;
