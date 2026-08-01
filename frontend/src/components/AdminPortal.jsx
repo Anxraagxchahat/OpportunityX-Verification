@@ -405,19 +405,19 @@ export function AdminPortal({ isOpen, onClose }) {
           className="relative w-full max-w-5xl bg-[#0B0D14] border border-slate-800 rounded-3xl shadow-2xl overflow-hidden my-4"
         >
           {/* Header Bar */}
-          <div className="flex items-center justify-between p-5 border-b border-slate-800 bg-slate-950/60">
+          <div className="flex items-center justify-between p-5 border-b border-slate-800 bg-slate-950/80 light-mode-header">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400">
                 <Smartphone size={22} />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+                <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
                   <span>OpportunityX Admin Certificate Portal</span>
-                  <span className="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-mono font-bold">
+                  <span className="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-[10px] font-mono font-bold">
                     GOOGLE AUTHENTICATOR (TOTP 2FA)
                   </span>
                 </h2>
-                <p className="text-xs text-slate-400">Official Issuer Portal • Digitally Signed Credential Engine</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Official Issuer Portal • Digitally Signed Credential Engine</p>
               </div>
             </div>
 
@@ -426,7 +426,7 @@ export function AdminPortal({ isOpen, onClose }) {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 font-semibold text-xs flex items-center gap-1.5 transition-all"
+                  className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-600 dark:text-rose-400 font-semibold text-xs flex items-center gap-1.5 transition-all"
                   title="Lock Admin Session"
                 >
                   <Lock size={13} />
@@ -439,7 +439,7 @@ export function AdminPortal({ isOpen, onClose }) {
                   handleLogout();
                   onClose();
                 }}
-                className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 transition-colors"
+                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800 transition-colors"
                 title="Close Portal"
               >
                 ✕
@@ -707,9 +707,9 @@ export function AdminPortal({ isOpen, onClose }) {
                             
                             <div className="flex flex-wrap gap-1.5">
                               {skills.map((skill, idx) => (
-                                <span key={idx} className="px-2.5 py-1 rounded bg-slate-800 border border-slate-700 text-xs text-slate-200 flex items-center gap-1.5">
+                                <span key={idx} className="px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/30 text-orange-600 dark:text-orange-400 font-mono text-xs font-semibold flex items-center gap-1.5 shadow-sm">
                                   <span>{skill}</span>
-                                  <button type="button" onClick={() => handleRemoveSkill(skill)} className="text-slate-400 hover:text-rose-400">
+                                  <button type="button" onClick={() => handleRemoveSkill(skill)} className="text-orange-400 hover:text-rose-500 transition-colors">
                                     ✕
                                   </button>
                                 </span>

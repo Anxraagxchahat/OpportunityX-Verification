@@ -134,15 +134,14 @@ body.light-mode footer {
 body.light-mode .bg-black,
 body.light-mode .bg-\[\#05070D\],
 body.light-mode .bg-\[\#0B0D14\],
-body.light-mode .bg-\[\#090B10\],
-body.light-mode .bg-slate-950,
-body.light-mode .bg-slate-900,
-body.light-mode .bg-slate-900\/80,
-body.light-mode .bg-slate-900\/50,
-body.light-mode .bg-slate-900\/60,
-body.light-mode .bg-slate-900\/90 {
+body.light-mode .bg-\[\#090B10\] {
   background-color: #FFFFFF !important;
   color: #0F172A !important;
+}
+
+body.light-mode .light-mode-header {
+  background-color: #F1F5F9 !important;
+  border-color: rgba(15, 23, 42, 0.1) !important;
 }
 
 body.light-mode .border-slate-800,
@@ -153,24 +152,12 @@ body.light-mode .border-slate-700\/80 {
   border-color: rgba(15, 23, 42, 0.12) !important;
 }
 
-body.light-mode .text-white,
-body.light-mode .text-slate-100,
-body.light-mode .text-slate-200 {
-  color: #0F172A !important;
-}
-
-body.light-mode .text-slate-300,
-body.light-mode .text-slate-400 {
-  color: #334155 !important;
-}
-
-body.light-mode .text-slate-500 {
-  color: #64748B !important;
-}
-
-body.light-mode input {
+body.light-mode input,
+body.light-mode select,
+body.light-mode textarea {
   color: #0F172A !important;
   background-color: #FFFFFF !important;
+  border-color: rgba(15, 23, 42, 0.15) !important;
 }
 
 body.light-mode input::placeholder {
