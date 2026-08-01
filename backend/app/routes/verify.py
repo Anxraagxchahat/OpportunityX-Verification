@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api", tags=["Verification"])
     description="Public, unauthenticated API endpoint to verify certificates issued by OpportunityX."
 )
 async def verify_certificate(
-    certificateId: str = Path(..., description="The unique certificate ID, e.g. OX-INT-2026-000145")
+    certificateId: str = Path(..., description="The unique certificate ID, e.g. OX-INT-2026-XXXXXX")
 ):
     clean_id = certificateId.strip().upper()
     if not clean_id or len(clean_id) < 5:
