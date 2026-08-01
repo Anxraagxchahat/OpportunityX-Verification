@@ -55,7 +55,7 @@ function VerificationPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-between bg-[#05070D] text-slate-100 relative selection:bg-orange-500/30 selection:text-white">
+    <div className="min-h-screen flex flex-col justify-between bg-black text-slate-100 relative selection:bg-orange-500/30 selection:text-white transition-colors duration-300">
       {/* Subtle Background Grid Line Overlay */}
       <div className="grid-bg" />
 

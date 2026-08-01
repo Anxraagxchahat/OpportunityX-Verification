@@ -30,9 +30,9 @@
 }
 
 :root {
-  --bg-dark: #05070D;
-  --bg-card: #0B0D14;
-  --bg-card-hover: #10131D;
+  --bg-dark: #000000; /* Pure AMOLED Black */
+  --bg-card: #080A10;
+  --bg-card-hover: #0F121A;
 
   --text-main: #F8FAFC;
   --text-muted: #94A3B8;
@@ -99,6 +99,26 @@ body {
   color: var(--text-main);
   line-height: 1.6;
   overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Light Mode Overrides */
+body.light-mode {
+  --bg-dark: #F8FAFC;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #F1F5F9;
+  --text-main: #0F172A;
+  --text-muted: #475569;
+  --border-color: rgba(15, 23, 42, 0.08);
+  --border-highlight: rgba(249, 115, 22, 0.3);
+  background-color: #F8FAFC;
+  color: #0F172A;
+}
+
+body.light-mode .grid-bg {
+  background-image: 
+    linear-gradient(rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
 }
 
 /* Utilities */

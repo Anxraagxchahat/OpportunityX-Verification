@@ -3,7 +3,7 @@ import { ShieldCheck, ExternalLink, Lock } from 'lucide-react';
 
 export function Footer({ onOpenAdmin }) {
   return (
-    <footer className="w-full border-t border-slate-800/60 bg-[#05070D] py-12 mt-20 text-slate-400">
+    <footer className="w-full border-t border-slate-800/60 bg-black py-10 mt-16 text-slate-400">
       <div className="container mx-auto px-4 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
         
         {/* Left: Branding & Trust Note */}
