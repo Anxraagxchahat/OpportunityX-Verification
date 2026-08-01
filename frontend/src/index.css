@@ -109,16 +109,78 @@ body.light-mode {
   --bg-card-hover: #F1F5F9;
   --text-main: #0F172A;
   --text-muted: #475569;
-  --border-color: rgba(15, 23, 42, 0.08);
+  --border-color: rgba(15, 23, 42, 0.1);
   --border-highlight: rgba(249, 115, 22, 0.3);
-  background-color: #F8FAFC;
-  color: #0F172A;
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
 }
 
 body.light-mode .grid-bg {
   background-image: 
-    linear-gradient(rgba(15, 23, 42, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
+}
+
+body.light-mode header {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(15, 23, 42, 0.1) !important;
+}
+
+body.light-mode footer {
+  background-color: #F1F5F9 !important;
+  border-color: rgba(15, 23, 42, 0.1) !important;
+}
+
+body.light-mode .bg-black,
+body.light-mode .bg-\[\#05070D\],
+body.light-mode .bg-\[\#0B0D14\],
+body.light-mode .bg-\[\#090B10\],
+body.light-mode .bg-slate-950,
+body.light-mode .bg-slate-900,
+body.light-mode .bg-slate-900\/80,
+body.light-mode .bg-slate-900\/50,
+body.light-mode .bg-slate-900\/60,
+body.light-mode .bg-slate-900\/90 {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+}
+
+body.light-mode .border-slate-800,
+body.light-mode .border-slate-800\/80,
+body.light-mode .border-slate-800\/60,
+body.light-mode .border-slate-700,
+body.light-mode .border-slate-700\/80 {
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+
+body.light-mode .text-white,
+body.light-mode .text-slate-100,
+body.light-mode .text-slate-200 {
+  color: #0F172A !important;
+}
+
+body.light-mode .text-slate-300,
+body.light-mode .text-slate-400 {
+  color: #334155 !important;
+}
+
+body.light-mode .text-slate-500 {
+  color: #64748B !important;
+}
+
+body.light-mode input {
+  color: #0F172A !important;
+  background-color: #FFFFFF !important;
+}
+
+body.light-mode input::placeholder {
+  color: #94A3B8 !important;
+}
+
+body.light-mode .cyber-glass-card {
+  background: #FFFFFF !important;
+  border-color: rgba(15, 23, 42, 0.1) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06) !important;
 }
 
 /* Utilities */

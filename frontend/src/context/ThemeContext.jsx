@@ -16,9 +16,13 @@ export const ThemeProvider = ({ children }) => {
 
     if (theme === 'light') {
       root.classList.remove('dark');
+      root.classList.add('light-mode');
+      body.classList.remove('dark');
       body.classList.add('light-mode');
     } else {
       root.classList.add('dark');
+      root.classList.remove('light-mode');
+      body.classList.add('dark');
       body.classList.remove('light-mode');
     }
 
