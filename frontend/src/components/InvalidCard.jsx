@@ -73,7 +73,7 @@ export function InvalidCard({ result, onReset }) {
           <div className="p-3.5 rounded-lg bg-slate-900/50 border border-slate-800 space-y-1">
             <span className="text-xs font-bold text-slate-200 uppercase tracking-wide block">1. Check Identifier</span>
             <p className="text-xs text-slate-400 leading-normal">
-              Verify string syntax and hyphen placement (e.g., OX-INT-2026-000145).
+              Verify string syntax and hyphen placement (e.g., OX-INT-2026-XXXXXX).
             </p>
           </div>
 
