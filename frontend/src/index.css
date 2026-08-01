@@ -102,7 +102,7 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Light Mode Overrides */
+/* Light Mode Comprehensive Overrides */
 body.light-mode {
   --bg-dark: #F8FAFC;
   --bg-card: #FFFFFF;
@@ -131,6 +131,7 @@ body.light-mode footer {
   border-color: rgba(15, 23, 42, 0.1) !important;
 }
 
+/* Background Overrides */
 body.light-mode .bg-black,
 body.light-mode .bg-\[\#05070D\],
 body.light-mode .bg-\[\#0B0D14\],
@@ -139,11 +140,27 @@ body.light-mode .bg-\[\#090B10\] {
   color: #0F172A !important;
 }
 
+body.light-mode .bg-slate-950,
+body.light-mode .bg-slate-900,
+body.light-mode .bg-slate-900\/80,
+body.light-mode .bg-slate-900\/50,
+body.light-mode .bg-slate-900\/40,
+body.light-mode .bg-slate-900\/30,
+body.light-mode .bg-slate-900\/20,
+body.light-mode .bg-slate-800,
+body.light-mode .bg-slate-800\/80,
+body.light-mode .bg-slate-800\/50 {
+  background-color: #F1F5F9 !important;
+  color: #0F172A !important;
+}
+
 body.light-mode .light-mode-header {
   background-color: #F1F5F9 !important;
   border-color: rgba(15, 23, 42, 0.1) !important;
 }
 
+/* Border Overrides */
+body.light-mode .border-slate-900,
 body.light-mode .border-slate-800,
 body.light-mode .border-slate-800\/80,
 body.light-mode .border-slate-800\/60,
@@ -152,6 +169,13 @@ body.light-mode .border-slate-700\/80 {
   border-color: rgba(15, 23, 42, 0.12) !important;
 }
 
+body.light-mode .divide-slate-800,
+body.light-mode .divide-slate-800\/80,
+body.light-mode .divide-slate-800\/50 {
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+
+/* Input Overrides */
 body.light-mode input,
 body.light-mode select,
 body.light-mode textarea {
@@ -161,9 +185,10 @@ body.light-mode textarea {
 }
 
 body.light-mode input::placeholder {
-  color: #94A3B8 !important;
+  color: #64748B !important;
 }
 
+/* Text Color Overrides for Light Mode High Contrast */
 body.light-mode .text-slate-400 {
   color: #475569 !important;
 }
@@ -176,7 +201,9 @@ body.light-mode .text-slate-300 {
   color: #1E293B !important;
 }
 
-body.light-mode .text-slate-200 {
+body.light-mode .text-slate-200,
+body.light-mode .text-slate-100,
+body.light-mode .text-white {
   color: #0F172A !important;
 }
 
