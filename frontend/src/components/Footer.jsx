@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShieldCheck, ExternalLink, Lock } from 'lucide-react';
 
-export function Footer() {
+export function Footer({ onOpenAdmin }) {
   return (
     <footer className="w-full border-t border-slate-800/60 bg-[#05070D] py-12 mt-20 text-slate-400">
       <div className="container mx-auto px-4 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
@@ -9,7 +9,15 @@ export function Footer() {
         {/* Left: Branding & Trust Note */}
         <div className="flex flex-col gap-2 text-center md:text-left">
           <div className="flex items-center justify-center md:justify-start gap-2">
-            <ShieldCheck size={18} className="text-orange-500" />
+            <button
+              type="button"
+              onClick={onOpenAdmin}
+              className="p-1 -m-1 rounded-md text-orange-500 hover:text-orange-400 hover:scale-110 active:scale-95 transition-all focus:outline-none"
+              title="OpportunityX Security Node"
+              aria-label="Security Node"
+            >
+              <ShieldCheck size={19} className="text-orange-500" />
+            </button>
             <span className="font-sans font-bold text-slate-200 text-sm tracking-wide">
               OpportunityX Verification Platform
             </span>
