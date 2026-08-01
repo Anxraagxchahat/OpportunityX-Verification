@@ -505,16 +505,16 @@ export function AdminPortal({ isOpen, onClose }) {
             /* AUTHENTICATED ADMIN DASHBOARD */
             <div>
               {/* Navigation Tabs */}
-              <div className="flex border-b border-slate-800 bg-slate-950/40 px-6 pt-3 gap-3">
+              <div className="flex border-b border-slate-300 dark:border-slate-800 bg-slate-200/80 dark:bg-slate-950/40 px-6 pt-3 gap-3">
                 <button
                   onClick={() => setActiveTab('generator')}
                   className={`px-4 py-2.5 rounded-t-xl font-semibold text-xs sm:text-sm flex items-center gap-2 border-b-2 transition-all ${
                     activeTab === 'generator'
-                      ? 'border-orange-500 text-white bg-slate-900'
-                      : 'border-transparent text-slate-400 hover:text-slate-200'
+                      ? 'border-orange-500 text-slate-900 dark:text-white bg-white dark:bg-slate-900 shadow-sm'
+                      : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
-                  <Award size={16} className={activeTab === 'generator' ? 'text-orange-400' : ''} />
+                  <Award size={16} className={activeTab === 'generator' ? 'text-orange-500' : ''} />
                   <span>Issue New Certificate</span>
                 </button>
 
@@ -522,11 +522,11 @@ export function AdminPortal({ isOpen, onClose }) {
                   onClick={() => setActiveTab('list')}
                   className={`px-4 py-2.5 rounded-t-xl font-semibold text-xs sm:text-sm flex items-center gap-2 border-b-2 transition-all ${
                     activeTab === 'list'
-                      ? 'border-orange-500 text-white bg-slate-900'
-                      : 'border-transparent text-slate-400 hover:text-slate-200'
+                      ? 'border-orange-500 text-slate-900 dark:text-white bg-white dark:bg-slate-900 shadow-sm'
+                      : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
-                  <FileText size={16} className={activeTab === 'list' ? 'text-orange-400' : ''} />
+                  <FileText size={16} className={activeTab === 'list' ? 'text-orange-500' : ''} />
                   <span>Registry Manager ({registryList.length})</span>
                 </button>
 
@@ -534,11 +534,11 @@ export function AdminPortal({ isOpen, onClose }) {
                   onClick={() => setActiveTab('settings')}
                   className={`px-4 py-2.5 rounded-t-xl font-semibold text-xs sm:text-sm flex items-center gap-2 border-b-2 transition-all ${
                     activeTab === 'settings'
-                      ? 'border-orange-500 text-white bg-slate-900'
-                      : 'border-transparent text-slate-400 hover:text-slate-200'
+                      ? 'border-orange-500 text-slate-900 dark:text-white bg-white dark:bg-slate-900 shadow-sm'
+                      : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
-                  <Settings size={16} className={activeTab === 'settings' ? 'text-orange-400' : ''} />
+                  <Settings size={16} className={activeTab === 'settings' ? 'text-orange-500' : ''} />
                   <span>Security & Key Settings</span>
                 </button>
               </div>
@@ -816,38 +816,38 @@ export function AdminPortal({ isOpen, onClose }) {
                 <div className="p-6 sm:p-8 space-y-4 max-h-[75vh] overflow-y-auto">
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                     <div className="relative w-full sm:w-72">
-                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input
                         type="text"
                         value={searchFilter}
                         onChange={(e) => setSearchFilter(e.target.value)}
                         placeholder="Search ID, Recipient or Role..."
-                        className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white text-xs placeholder-slate-500 focus:outline-none focus:border-orange-500"
+                        className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-slate-900 dark:text-white text-xs placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-orange-500"
                       />
                     </div>
 
                     <button
                       onClick={() => fetchRegistryList(adminKey)}
-                      className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 text-xs font-semibold flex items-center gap-1.5 border border-slate-800"
+                      className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5 border border-slate-300 dark:border-slate-800 transition-colors"
                     >
                       <RefreshCw size={13} className={loadingList ? 'animate-spin' : ''} />
                       <span>Refresh Registry</span>
                     </button>
                   </div>
 
-                  <div className="overflow-x-auto border border-slate-800 rounded-xl bg-slate-950">
-                    <table className="w-full text-left text-xs text-slate-300">
-                      <thead className="bg-slate-900 text-slate-400 uppercase font-mono text-[10px] border-b border-slate-800">
+                  <div className="overflow-x-auto border border-slate-300 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 shadow-sm">
+                    <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+                      <thead className="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-400 uppercase font-mono text-[10px] border-b border-slate-300 dark:border-slate-800">
                         <tr>
-                          <th className="p-3">Record ID</th>
-                          <th className="p-3">Recipient</th>
-                          <th className="p-3">Role / Designation</th>
-                          <th className="p-3">Issued Date</th>
-                          <th className="p-3">Status</th>
-                          <th className="p-3 text-right">Actions</th>
+                          <th className="p-3 font-bold">Record ID</th>
+                          <th className="p-3 font-bold">Recipient</th>
+                          <th className="p-3 font-bold">Role / Designation</th>
+                          <th className="p-3 font-bold">Issued Date</th>
+                          <th className="p-3 font-bold">Status</th>
+                          <th className="p-3 text-right font-bold">Actions</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-800/80">
+                      <tbody className="divide-y divide-slate-200 dark:divide-slate-800/80">
                         {registryList
                           .filter(item => 
                             item.certificate_id.toLowerCase().includes(searchFilter.toLowerCase()) ||
@@ -855,11 +855,11 @@ export function AdminPortal({ isOpen, onClose }) {
                             item.role.toLowerCase().includes(searchFilter.toLowerCase())
                           )
                           .map((item, idx) => (
-                            <tr key={idx} className="hover:bg-slate-900/50">
-                              <td className="p-3 font-mono font-bold text-amber-400">{item.certificate_id}</td>
-                              <td className="p-3 font-bold text-white">{item.recipient}</td>
-                              <td className="p-3 text-slate-300">{item.role}</td>
-                              <td className="p-3 text-slate-400">{item.issued_date}</td>
+                            <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                              <td className="p-3 font-mono font-bold text-orange-600 dark:text-amber-400">{item.certificate_id}</td>
+                              <td className="p-3 font-bold text-slate-900 dark:text-white">{item.recipient}</td>
+                              <td className="p-3 text-slate-700 dark:text-slate-300">{item.role}</td>
+                              <td className="p-3 text-slate-600 dark:text-slate-400">{item.issued_date}</td>
                               <td className="p-3">
                                 <StatusBadge status={item.status} size="small" />
                               </td>
@@ -867,7 +867,7 @@ export function AdminPortal({ isOpen, onClose }) {
                                 <button
                                   type="button"
                                   onClick={() => setConfirmDeleteCert(item)}
-                                  className="px-2.5 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-semibold border border-rose-500/30 text-xs inline-flex items-center gap-1 transition-all"
+                                  className="px-2.5 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-semibold border border-rose-500/30 text-xs inline-flex items-center gap-1 transition-all"
                                   title="Permanently Delete Certificate"
                                 >
                                   <Trash2 size={13} />
@@ -876,7 +876,7 @@ export function AdminPortal({ isOpen, onClose }) {
                                 <button
                                   type="button"
                                   onClick={() => setViewingDoc(item)}
-                                  className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 text-amber-400 font-semibold border border-slate-800 text-xs inline-flex items-center gap-1 transition-all"
+                                  className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-orange-600 dark:text-amber-400 font-semibold border border-slate-300 dark:border-slate-800 text-xs inline-flex items-center gap-1 transition-all"
                                 >
                                   <span>View</span>
                                 </button>
@@ -884,7 +884,7 @@ export function AdminPortal({ isOpen, onClose }) {
                                   <button
                                     type="button"
                                     onClick={() => triggerRevokeModal(item)}
-                                    className="px-2.5 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 font-semibold border border-amber-500/30 text-xs inline-flex items-center gap-1 transition-all"
+                                    className="px-2.5 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-300 font-semibold border border-amber-500/30 text-xs inline-flex items-center gap-1 transition-all"
                                   >
                                     <span>Revoke</span>
                                   </button>
@@ -903,35 +903,35 @@ export function AdminPortal({ isOpen, onClose }) {
                 <div className="p-6 sm:p-8 space-y-6 max-h-[75vh] overflow-y-auto max-w-2xl mx-auto">
                   
                   {/* GOOGLE AUTHENTICATOR 2FA ENROLLMENT & QR CONFIG */}
-                  <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-5 shadow-xl">
-                    <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
+                  <div className="p-6 rounded-2xl bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 space-y-5 shadow-xl">
+                    <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800/80 pb-4">
                       <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                        <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400">
                           <Smartphone size={22} />
                         </div>
                         <div>
-                          <h3 className="text-base font-extrabold text-white">Google Authenticator (TOTP 2FA)</h3>
-                          <p className="text-xs text-slate-400">Primary authentication mechanism with 30-second passcode resets.</p>
+                          <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Google Authenticator (TOTP 2FA)</h3>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">Primary authentication mechanism with 30-second passcode resets.</p>
                         </div>
                       </div>
                       <div>
-                        <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center gap-1.5">
+                        <span className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-1.5">
                           <CheckCircle2 size={13} /> 2FA Active & Enforced
                         </span>
                       </div>
                     </div>
 
                     {/* SETUP QR DISPLAY BUTTON & MODAL LAUNCH */}
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-slate-900 border border-slate-800">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
                       <div className="space-y-1 text-center sm:text-left">
-                        <span className="text-xs font-bold text-white block">Pair Mobile Device</span>
-                        <span className="text-[11px] text-slate-400 block">Open Google Authenticator on your phone and scan the QR code or enter secret key.</span>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white block">Pair Mobile Device</span>
+                        <span className="text-[11px] text-slate-600 dark:text-slate-400 block">Open Google Authenticator on your phone and scan the QR code or enter secret key.</span>
                       </div>
 
                       <button
                         type="button"
                         onClick={() => setShowQrModal(true)}
-                        className="px-4 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all shadow-md active:scale-95"
+                        className="px-4 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-700 dark:text-amber-300 font-bold text-xs flex items-center gap-2 whitespace-nowrap transition-all shadow-md active:scale-95"
                       >
                         <QrCode size={16} />
                         <span>Show QR Code & Secret</span>
@@ -940,7 +940,7 @@ export function AdminPortal({ isOpen, onClose }) {
 
                     {/* VERIFY & TEST CURRENT 6-DIGIT CODE */}
                     <form onSubmit={handleEnable2FAInSettings} className="space-y-3 pt-2">
-                      <label className="block text-xs font-semibold text-slate-300">
+                      <label className="block text-xs font-semibold text-slate-800 dark:text-slate-300">
                         Test Current 6-Digit Code from Phone App
                       </label>
                       <div className="flex gap-2">
@@ -950,7 +950,7 @@ export function AdminPortal({ isOpen, onClose }) {
                           value={setupTotpCode}
                           onChange={(e) => setSetupTotpCode(e.target.value)}
                           placeholder="000000"
-                          className="flex-1 px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-amber-400 font-mono font-bold text-sm tracking-widest placeholder-slate-600 focus:outline-none focus:border-amber-500"
+                          className="flex-1 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 text-orange-600 dark:text-amber-400 font-mono font-bold text-sm tracking-widest placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:border-amber-500"
                         />
                         <button
                           type="submit"
@@ -961,7 +961,7 @@ export function AdminPortal({ isOpen, onClose }) {
                       </div>
 
                       {totpEnableSuccess && (
-                        <p className="text-xs font-bold text-emerald-400 flex items-center gap-1 pt-1">
+                        <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 pt-1">
                           <CheckCircle2 size={14} /> {totpEnableSuccess}
                         </p>
                       )}
