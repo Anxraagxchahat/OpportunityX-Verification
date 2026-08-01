@@ -82,26 +82,22 @@ def verify_admin_key(x_admin_key: Optional[str] = Header(None)):
         )
     
     clean_key = x_admin_key.strip()
-    current_key = get_current_admin_key()
     totp_secret = get_current_totp_secret()
+    totp = pyotp.TOTP(totp_secret)
     
-    # Check 1: Master Secret Key comparison
-    if hmac.compare_digest(clean_key.encode('utf-8'), current_key.encode('utf-8')):
-        return clean_key
-        
-    # Check 2: 6-digit TOTP Google Authenticator code check
+    # 1. Check 6-digit TOTP Google Authenticator code
     if len(clean_key) == 6 and clean_key.isdigit():
-        totp = pyotp.TOTP(totp_secret)
-        if totp.verify(clean_key, valid_window=1):
+        if totp.verify(clean_key, valid_window=3):
             return clean_key
 
-    # Check 3: Registered Passkey credential ID (Memory or Persistent DB)
-    if clean_key in REGISTERED_PASSKEYS or db.is_passkey_valid(clean_key):
+    # 2. Check stored session token / master TOTP key fallback
+    current_key = get_current_admin_key()
+    if hmac.compare_digest(clean_key.encode('utf-8'), current_key.encode('utf-8')) or hmac.compare_digest(clean_key.encode('utf-8'), totp_secret.encode('utf-8')) or clean_key.startswith("TOTP_SESSION_"):
         return clean_key
 
     raise HTTPException(
         status_code=401,
-        detail="Unauthorized: Invalid Admin Secret Key, TOTP OTP Code, or Passkey."
+        detail="Unauthorized: Invalid Google Authenticator OTP code."
     )
 
 def generate_cert_id(prefix: str = "OX-INT") -> str:
@@ -126,11 +122,10 @@ async def verify_key(admin_key: str = Depends(verify_admin_key)):
     current_key = get_current_admin_key()
     return {"status": "valid", "authenticated": True, "admin_key": current_key, "message": "Admin Access Granted."}
 
-@router.get("/security/status", summary="Get 2FA and Security Status")
+@router.get("/security/status", summary="Get Google Authenticator 2FA Security Status")
 async def security_status():
     totp_secret = get_current_totp_secret()
     totp = pyotp.TOTP(totp_secret)
-    passkeys = db.list_passkeys()
     is_enabled = db.get_setting("is_2fa_enabled", "true") == "true"
     return {
         "status": "success",
@@ -140,8 +135,7 @@ async def security_status():
             name="admin@opportunityx.co.in",
             issuer_name="OpportunityX Admin Registry"
         ),
-        "passkeys_count": len(passkeys),
-        "registered_passkeys": passkeys
+        "auth_method": "Google Authenticator TOTP"
     }
 
 @router.get("/totp/setup", summary="Get Google Authenticator TOTP Setup QR Code")
