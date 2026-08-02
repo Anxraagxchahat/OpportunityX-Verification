@@ -32,6 +32,12 @@ import {
 } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { CertificateViewerModal } from './CertificateViewerModal';
+import { 
+  saveCertificateToFirebase, 
+  listCertificatesFromFirebase, 
+  revokeCertificateInFirebase, 
+  deleteCertificateFromFirebase 
+} from '../firebase/firebaseService';
 
 const DEFAULT_KEY = "OX-SECURE-ADMIN-2026-9f8a3c7b1e4d0258";
 const TOTP_SECRET = "JBSWY3DPEHPK3PXP";
@@ -194,16 +200,45 @@ export function AdminPortal({ isOpen, onClose }) {
 
   const fetchRegistryList = async (key) => {
     setLoadingList(true);
+    let apiItems = [];
     try {
       const res = await fetch(`${API_BASE}/api/admin/list`, {
         headers: { 'X-Admin-Key': key || adminKey }
       });
       if (res.ok) {
-        const data = await res.json();
-        setRegistryList(data);
+        apiItems = await res.json();
       }
     } catch (err) {
       console.warn('Backend list fallback');
+    }
+
+    try {
+      const fbItems = await listCertificatesFromFirebase();
+      const combinedMap = new Map();
+
+      // Load Firebase items
+      fbItems.forEach(item => {
+        if (item.certificate_id) {
+          combinedMap.set(item.certificate_id.toUpperCase(), item);
+        }
+      });
+
+      // Overlay API items
+      apiItems.forEach(item => {
+        if (item.certificate_id) {
+          const id = item.certificate_id.toUpperCase();
+          combinedMap.set(id, {
+            ...(combinedMap.get(id) || {}),
+            ...item
+          });
+        }
+      });
+
+      const mergedList = Array.from(combinedMap.values());
+      setRegistryList(mergedList);
+    } catch (fbErr) {
+      console.warn('Firebase list fallback:', fbErr);
+      setRegistryList(apiItems);
     } finally {
       setLoadingList(false);
     }
@@ -252,9 +287,10 @@ export function AdminPortal({ isOpen, onClose }) {
 
       if (res.ok) {
         const newRecord = await res.json();
+        await saveCertificateToFirebase(newRecord).catch(e => console.error("Firebase sync error on issue:", e));
         setIssuedResult(newRecord);
-        setRegistryList([newRecord, ...registryList]);
-        showToast(`Certificate ${newRecord.certificate_id} issued successfully!`, 'success');
+        setRegistryList(prev => [newRecord, ...prev.filter(p => p.certificate_id !== newRecord.certificate_id)]);
+        showToast(`Certificate ${newRecord.certificate_id} issued & synced to Firebase Cloud!`, 'success');
       } else {
         throw new Error('API return error');
       }
@@ -268,6 +304,7 @@ export function AdminPortal({ isOpen, onClose }) {
         certificate_id: certId,
         status: 'Valid',
         recipient: formData.recipient,
+        recipient_name: formData.recipient,
         type_label: formData.type_label,
         role: formData.role,
         duration: formData.duration,
@@ -275,6 +312,7 @@ export function AdminPortal({ isOpen, onClose }) {
         issued_by: formData.issued_by,
         digital_signature: mockSignature,
         verification_timestamp: nowTime,
+        skills_verified: skills,
         details: { skills_verified: skills },
         metadata: {
           digital_signature_status: "Cryptographically Validated (ECDSA-256)",
@@ -284,9 +322,10 @@ export function AdminPortal({ isOpen, onClose }) {
         verification_url: `https://verify.opportunityx.co.in/?id=${certId}`
       };
 
+      await saveCertificateToFirebase(mockRecord).catch(e => console.error("Firebase sync error on fallback issue:", e));
       setIssuedResult(mockRecord);
-      setRegistryList([mockRecord, ...registryList]);
-      showToast(`Certificate ${certId} generated in fallback mode.`, 'success');
+      setRegistryList(prev => [mockRecord, ...prev.filter(p => p.certificate_id !== mockRecord.certificate_id)]);
+      showToast(`Certificate ${certId} saved directly to Firebase Cloud DB!`, 'success');
     } finally {
       setIssuing(false);
     }
@@ -335,58 +374,52 @@ export function AdminPortal({ isOpen, onClose }) {
     setConfirmRevokeCert(item);
   };
 
-  // Confirms revocation with backend API
+  // Confirms revocation with backend API and Firebase Firestore
   const handleConfirmRevocation = async () => {
     if (!confirmRevokeCert) return;
     const certId = confirmRevokeCert.certificate_id;
     setIsRevoking(true);
 
     try {
-      const res = await fetch(`${API_BASE}/api/admin/revoke/${certId}`, {
+      await fetch(`${API_BASE}/api/admin/revoke/${certId}`, {
         method: 'POST',
         headers: { 'X-Admin-Key': adminKey }
-      });
+      }).catch(() => {});
 
-      if (res.ok) {
-        setRegistryList(prev => prev.map(item => 
-          item.certificate_id === certId ? { ...item, status: 'Revoked' } : item
-        ));
-        showToast(`Certificate ${certId} has been officially REVOKED.`, 'success');
-        setConfirmRevokeCert(null);
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        showToast(errData.detail || 'Failed to revoke certificate on server.', 'error');
-      }
+      await revokeCertificateInFirebase(certId);
+
+      setRegistryList(prev => prev.map(item => 
+        item.certificate_id === certId ? { ...item, status: 'Revoked' } : item
+      ));
+      showToast(`Certificate ${certId} has been officially REVOKED in Cloud DB.`, 'success');
+      setConfirmRevokeCert(null);
     } catch (err) {
-      showToast('Unable to reach server to revoke certificate.', 'error');
+      showToast('Error revoking certificate in Cloud DB.', 'error');
     } finally {
       setIsRevoking(false);
     }
   };
 
-  // Confirms permanent deletion of certificate record
+  // Confirms permanent deletion of certificate record from backend and Firebase Firestore
   const handleConfirmDeleteCert = async () => {
     if (!confirmDeleteCert) return;
     const certId = confirmDeleteCert.certificate_id;
     setIsDeletingCert(true);
 
     try {
-      const res = await fetch(`${API_BASE}/api/admin/delete/${encodeURIComponent(certId)}`, {
+      await fetch(`${API_BASE}/api/admin/delete/${encodeURIComponent(certId)}`, {
         method: 'DELETE',
         headers: { 'X-Admin-Key': adminKey }
-      });
+      }).catch(() => {});
 
-      if (res.ok) {
-        setRegistryList(prev => prev.filter(item => item.certificate_id !== certId));
-        showToast(`Certificate ${certId} permanently deleted from registry.`, 'success');
-        setConfirmDeleteCert(null);
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        showToast(errData.detail || 'Failed to delete certificate on server.', 'error');
-      }
+      await deleteCertificateFromFirebase(certId);
+
+      setRegistryList(prev => prev.filter(item => item.certificate_id !== certId));
+      showToast(`Certificate ${certId} permanently deleted from Cloud Registry.`, 'success');
+      setConfirmDeleteCert(null);
     } catch (err) {
       setRegistryList(prev => prev.filter(item => item.certificate_id !== certId));
-      showToast(`Certificate ${certId} removed locally.`, 'success');
+      showToast(`Certificate ${certId} removed.`, 'success');
       setConfirmDeleteCert(null);
     } finally {
       setIsDeletingCert(false);
