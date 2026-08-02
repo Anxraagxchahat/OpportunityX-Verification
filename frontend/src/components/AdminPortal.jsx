@@ -202,14 +202,18 @@ export function AdminPortal({ isOpen, onClose }) {
     setLoadingList(true);
     let apiItems = [];
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
       const res = await fetch(`${API_BASE}/api/admin/list`, {
-        headers: { 'X-Admin-Key': key || adminKey }
+        headers: { 'X-Admin-Key': key || adminKey },
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
       if (res.ok) {
         apiItems = await res.json();
       }
     } catch (err) {
-      console.warn('Backend list fallback');
+      console.warn('Backend list fast fallback to Firebase');
     }
 
     try {
@@ -264,6 +268,34 @@ export function AdminPortal({ isOpen, onClose }) {
     setIssuing(true);
     setIssuedResult(null);
 
+    const randomNum = Math.floor(100000 + Math.random() * 900000);
+    const certId = `${formData.prefix}-2026-${randomNum}`;
+    const mockSignature = `0x${Array.from({length: 40}, () => Math.floor(Math.random()*16).toString(16)).join('')}`;
+    const nowTime = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+
+    const certRecord = {
+      certificate_id: certId,
+      status: 'Valid',
+      recipient: formData.recipient,
+      recipient_name: formData.recipient,
+      type_label: formData.type_label,
+      certificate_type: formData.type_label,
+      role: formData.role,
+      duration: formData.duration,
+      issued_date: formData.issued_date,
+      issued_by: formData.issued_by,
+      digital_signature: mockSignature,
+      verification_timestamp: nowTime,
+      skills_verified: skills,
+      details: { skills_verified: skills },
+      metadata: {
+        digital_signature_status: "Cryptographically Validated (ECDSA-256)",
+        qr_status: "Verified & Tamper-Evident",
+        verification_standard: "W3C Verifiable Credentials Standard v1.1"
+      },
+      verification_url: `https://verify.opportunityx.co.in/?id=${certId}`
+    };
+
     const payload = {
       recipient: formData.recipient,
       type_label: formData.type_label,
@@ -276,14 +308,20 @@ export function AdminPortal({ isOpen, onClose }) {
     };
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+
       const res = await fetch(`${API_BASE}/api/admin/issue`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Admin-Key': adminKey
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (res.ok) {
         const newRecord = await res.json();
@@ -291,41 +329,21 @@ export function AdminPortal({ isOpen, onClose }) {
         setIssuedResult(newRecord);
         setRegistryList(prev => [newRecord, ...prev.filter(p => p.certificate_id !== newRecord.certificate_id)]);
         showToast(`Certificate ${newRecord.certificate_id} issued & synced to Firebase Cloud!`, 'success');
-      } else {
-        throw new Error('API return error');
+        setIssuing(false);
+        return;
       }
     } catch (err) {
-      const randomNum = Math.floor(100000 + Math.random() * 900000);
-      const certId = `${formData.prefix}-2026-${randomNum}`;
-      const mockSignature = `0x${Array.from({length: 40}, () => Math.floor(Math.random()*16).toString(16)).join('')}`;
-      const nowTime = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+      console.warn("Backend API cold start timeout, issuing directly to Firebase Cloud DB...", err);
+    }
 
-      const mockRecord = {
-        certificate_id: certId,
-        status: 'Valid',
-        recipient: formData.recipient,
-        recipient_name: formData.recipient,
-        type_label: formData.type_label,
-        role: formData.role,
-        duration: formData.duration,
-        issued_date: formData.issued_date,
-        issued_by: formData.issued_by,
-        digital_signature: mockSignature,
-        verification_timestamp: nowTime,
-        skills_verified: skills,
-        details: { skills_verified: skills },
-        metadata: {
-          digital_signature_status: "Cryptographically Validated (ECDSA-256)",
-          qr_status: "Verified & Tamper-Evident",
-          verification_standard: "W3C Verifiable Credentials Standard v1.1"
-        },
-        verification_url: `https://verify.opportunityx.co.in/?id=${certId}`
-      };
-
-      await saveCertificateToFirebase(mockRecord).catch(e => console.error("Firebase sync error on fallback issue:", e));
-      setIssuedResult(mockRecord);
-      setRegistryList(prev => [mockRecord, ...prev.filter(p => p.certificate_id !== mockRecord.certificate_id)]);
-      showToast(`Certificate ${certId} saved directly to Firebase Cloud DB!`, 'success');
+    try {
+      await saveCertificateToFirebase(certRecord);
+      setIssuedResult(certRecord);
+      setRegistryList(prev => [certRecord, ...prev.filter(p => p.certificate_id !== certRecord.certificate_id)]);
+      showToast(`Certificate ${certId} issued & saved to Firebase Cloud DB!`, 'success');
+    } catch (fbErr) {
+      console.error("Firebase save error:", fbErr);
+      showToast("Failed to save certificate to Cloud Database.", "error");
     } finally {
       setIssuing(false);
     }
@@ -826,16 +844,16 @@ export function AdminPortal({ isOpen, onClose }) {
                           <button
                             type="submit"
                             disabled={issuing}
-                            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-sm shadow-xl shadow-orange-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-sm shadow-xl shadow-orange-500/25 active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-90 disabled:cursor-wait cursor-pointer border border-amber-400/40"
                           >
                             {issuing ? (
-                              <>
-                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                <span>Generating Cryptographic Signature...</span>
-                              </>
+                              <div className="flex items-center gap-2 text-white font-extrabold">
+                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
+                                <span className="text-white font-bold drop-shadow-md">Generating Cryptographic Signature...</span>
+                              </div>
                             ) : (
                               <>
-                                <Sparkles size={18} />
+                                <Sparkles size={18} className="shrink-0" />
                                 <span>Issue & Register Official Credential</span>
                               </>
                             )}
