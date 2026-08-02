@@ -359,19 +359,27 @@ class CertificateDatabase:
 
     def _init_firebase(self):
         cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH")
-        if cred_path and os.path.exists(cred_path):
-            try:
-                import firebase_admin
-                from firebase_admin import credentials, firestore
-                if not firebase_admin._apps:
+        cred_json_str = os.getenv("FIREBASE_CREDENTIALS_JSON")
+        
+        try:
+            import firebase_admin
+            from firebase_admin import credentials, firestore
+
+            if not firebase_admin._apps:
+                if cred_path and os.path.exists(cred_path):
                     cred = credentials.Certificate(cred_path)
                     firebase_admin.initialize_app(cred)
-                self.firestore_db = firestore.client()
-                logger.info("Firebase Firestore initialized successfully.")
-            except Exception as e:
-                logger.warning(f"Firebase initialization failed, running in seeded local mode: {e}")
-        else:
-            logger.info("No Firebase credentials provided. Operating in high-integrity local registry mode.")
+                elif cred_json_str:
+                    cred_dict = json.loads(cred_json_str)
+                    cred = credentials.Certificate(cred_dict)
+                    firebase_admin.initialize_app(cred)
+                else:
+                    firebase_admin.initialize_app(options={'projectId': os.getenv('FIREBASE_PROJECT_ID', 'verify-opportunityx')})
+
+            self.firestore_db = firestore.client()
+            logger.info("Firebase Firestore initialized successfully.")
+        except Exception as e:
+            logger.info(f"Firebase initialization info/fallback: {e}")
 
     def get_certificate(self, certificate_id: str) -> Optional[CertificateRecord]:
         clean_id = certificate_id.strip().upper()
