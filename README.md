@@ -8,6 +8,7 @@ A standalone, public, enterprise-grade certificate verification web application 
 - **OpportunityX Design System**: Built with exact visual fidelity using OpportunityX design tokens, Satoshi + Inter fonts, dark theme glassmorphism, glowing micro-interactions, and premium typography.
 - **Modular Verification Engine**: Pluggable backend architecture supporting Internship Certificates (`OX-INT`), Career Certificates (`OX-CAR`), Workshop Certificates (`OX-WRK`), Badges (`OX-BDG`), Assessments (`OX-ASM`), and Competitions (`OX-CMP`).
 - **Cryptographic Trust**: Verification validated via 256-bit ECDSA digital signatures, tamper-evident QR codes, W3C verifiable credentials metadata, and real-time backend API validation.
+- **Firebase Cloud Database Persistence**: Direct Firestore cloud database synchronization (`verify-opportunityx`) ensuring 100% certificate data persistence and instant fallback verification searches.
 - **Interactive Certificate Document Viewer**: Embedded printable digital certificate modal with gold seal of authenticity, QR code, and PDF download support.
 - **Security-First API**: Frontend never decides validity; backend enforces validation and returns only sanitized public payloads without exposing database internals.
 
