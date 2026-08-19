@@ -19,7 +19,7 @@ const SOCIAL_LINKS = [
   },
   {
     name: 'GitHub',
-    url: 'https://github.com/Anxraagxchahat/opportunityx',
+    url: 'https://github.com/Anxraagxchahat',
     icon: GitHubIcon,
     ariaLabel: 'OpportunityX on GitHub',
     colorHover: 'hover:text-purple-600 dark:hover:text-purple-400 hover:border-purple-500/50 hover:bg-purple-500/10'
