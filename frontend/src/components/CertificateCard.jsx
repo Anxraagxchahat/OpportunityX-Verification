@@ -13,21 +13,17 @@ import {
   Share2, 
   Copy, 
   Check, 
-  Award,
   Lock,
   FileCheck,
-  Globe,
-  Printer
+  Globe
 } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { QrModal } from './QrModal';
-import { CertificateViewerModal } from './CertificateViewerModal';
 
 export function CertificateCard({ result }) {
   const [copied, setCopied] = useState(false);
   const [sigCopied, setSigCopied] = useState(false);
   const [isQrOpen, setIsQrOpen] = useState(false);
-  const [isDocOpen, setIsDocOpen] = useState(false);
 
   if (!result) return null;
 
@@ -48,7 +44,7 @@ export function CertificateCard({ result }) {
     verification_url = '',
   } = result;
 
-  const shareUrl = verification_url || `${window.location.origin}/?id=${certificate_id}`;
+  const shareUrl = verification_url || `https://www.verify.opportunityx.co.in/?id=${certificate_id}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl);
@@ -222,23 +218,14 @@ export function CertificateCard({ result }) {
         </p>
       </div>
 
-      {/* Action Buttons Row */}
-      <div className="pt-2 border-t border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <button
-          type="button"
-          onClick={() => setIsDocOpen(true)}
-          className="px-4 py-2.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-sans font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-orange-500/20 active:scale-95 transition-all"
-        >
-          <Award size={15} />
-          <span>View Official Certificate</span>
-        </button>
-
+      {/* Action Buttons Row - Public Verification Actions */}
+      <div className="pt-2 border-t border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
         <button
           type="button"
           onClick={() => setIsQrOpen(true)}
-          className="px-4 py-2.5 rounded-lg bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
+          className="px-4 py-2.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-orange-500/20 active:scale-95 transition-all"
         >
-          <QrCode size={15} className="text-amber-500 dark:text-amber-400" />
+          <QrCode size={15} />
           <span>QR Code Verification</span>
         </button>
 
@@ -252,18 +239,19 @@ export function CertificateCard({ result }) {
         </button>
       </div>
 
+      {/* Verification Notice */}
+      <div className="text-center pt-1 border-t border-slate-200 dark:border-slate-800/60">
+        <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+          Official Virtual Certificate is issued & delivered directly by OpportunityX Authority. This public portal provides cryptographic credential verification.
+        </p>
+      </div>
+
       {/* Modals */}
       <QrModal
         isOpen={isQrOpen}
         onClose={() => setIsQrOpen(false)}
         certificateId={certificate_id}
         verificationUrl={shareUrl}
-      />
-
-      <CertificateViewerModal
-        isOpen={isDocOpen}
-        onClose={() => setIsDocOpen(false)}
-        data={result}
       />
     </motion.div>
   );

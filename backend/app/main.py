@@ -17,8 +17,10 @@ app = FastAPI(
 
 # Configure CORS for standalone frontend & potential OpportunityX ecosystem integration
 allowed_origins = [
+    "https://www.verify.opportunityx.co.in",
     "https://verify.opportunityx.co.in",
     "https://opportunityx.co.in",
+    "https://www.opportunityx.co.in",
     "http://localhost:5173",
     "http://localhost:3000",
     "http://127.0.0.1:5173",

@@ -21,7 +21,7 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
   const verification_url = data.verification_url || '';
   const skillsList = data.details?.skills_verified || data.skills_verified || [];
 
-  const url = verification_url || `https://verify.opportunityx.co.in/?id=${certificate_id}`;
+  const url = verification_url || `https://www.verify.opportunityx.co.in/?id=${certificate_id}`;
 
   const handlePrint = () => {
     window.print();
@@ -82,14 +82,24 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
           <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-3 gap-3 print:hidden">
             <div className="flex items-center gap-2">
               <Award className="text-orange-400" size={20} />
-              <span className="text-sm font-bold text-white">Official OpportunityX Certificate Document</span>
+              <span className="text-sm font-bold text-white">Official OpportunityX Virtual Certificate (Admin)</span>
             </div>
 
             <div className="flex items-center gap-2.5">
               <button
                 type="button"
+                onClick={handleDownloadPdf}
+                disabled={downloading}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-bold flex items-center gap-2 transition-all shadow-md shadow-orange-500/20 active:scale-95 disabled:opacity-75"
+              >
+                <Download size={15} />
+                <span>{downloading ? 'Exporting PDF...' : 'Download PDF'}</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={handlePrint}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-xs font-bold flex items-center gap-2 transition-all shadow-md shadow-orange-500/20 active:scale-95"
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold flex items-center gap-2 transition-all border border-slate-700 active:scale-95"
               >
                 <Printer size={15} />
                 <span>Print Certificate</span>
@@ -234,7 +244,7 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
               </div>
               <div className="relative flex items-center gap-1.5 bg-white px-4 text-xs text-slate-700 font-medium z-10">
                 <ShieldCheck size={14} className="text-slate-900 shrink-0" style={{ display: 'inline-block', verticalAlign: 'middle', marginTop: '-1px' }} />
-                <span>Verify this credential anytime at <strong className="text-slate-900 font-bold font-mono">verify.opportunityx.co.in</strong></span>
+                <span>Verify this credential anytime at <strong className="text-slate-900 font-bold font-mono">www.verify.opportunityx.co.in</strong></span>
               </div>
             </div>
 

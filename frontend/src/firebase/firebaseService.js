@@ -12,12 +12,12 @@ import {
 const COLLECTION_NAME = 'certificates';
 
 /**
- * Timeout wrapper for Firestore operations to prevent infinite hanging when adblockers block requests.
+ * Timeout wrapper for Firestore operations.
  */
-function withTimeout(promise, ms = 3000) {
+function withTimeout(promise, ms = 7000) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
-      reject(new Error(`Firestore request timed out after ${ms}ms (possibly blocked by AdBlocker/Client)`));
+      reject(new Error(`Firestore request timed out after ${ms}ms`));
     }, ms);
 
     promise
@@ -79,13 +79,14 @@ export async function saveCertificateToFirebase(certRecord) {
     updated_at: new Date().toISOString()
   };
 
-  // Always mirror to LocalStorage so certificate is preserved even if Firestore request is blocked by browser adblockers
+  // Mirror to local cache for instant offline responsiveness
   saveToLocalStorageFallback(payload);
 
   try {
-    await withTimeout(setDoc(docRef, payload, { merge: true }), 3000);
+    await withTimeout(setDoc(docRef, payload, { merge: true }), 7000);
+    console.info(`[Firestore] Successfully saved certificate ${cleanId} to Firebase Cloud.`);
   } catch (err) {
-    console.warn("Firestore save timeout/blocked, saved locally:", err);
+    console.warn("[Firestore] Save timeout or permission notice, saved locally:", err);
   }
 
   return payload;
@@ -98,19 +99,20 @@ export async function getCertificateFromFirebase(certificateId) {
   if (!certificateId) return null;
   const cleanId = certificateId.trim().toUpperCase();
 
-  const localRecord = getFromLocalStorageFallback(cleanId);
-
   try {
     const docRef = doc(db, COLLECTION_NAME, cleanId);
-    const docSnap = await withTimeout(getDoc(docRef), 2500);
+    const docSnap = await withTimeout(getDoc(docRef), 5000);
     if (docSnap.exists()) {
-      return docSnap.data();
+      const data = docSnap.data();
+      saveToLocalStorageFallback(data);
+      return data;
     }
   } catch (error) {
-    console.warn(`Firebase Firestore fetch error / blocked for ${cleanId}:`, error);
+    console.warn(`[Firestore] Fetch notice for ${cleanId}:`, error);
   }
 
-  return localRecord;
+  // Fallback to local storage if network or client blocks request
+  return getFromLocalStorageFallback(cleanId);
 }
 
 /**
@@ -119,7 +121,7 @@ export async function getCertificateFromFirebase(certificateId) {
 export async function listCertificatesFromFirebase() {
   const localList = listFromLocalStorageFallback();
   try {
-    const querySnapshot = await withTimeout(getDocs(collection(db, COLLECTION_NAME)), 3000);
+    const querySnapshot = await withTimeout(getDocs(collection(db, COLLECTION_NAME)), 6000);
     const certsMap = new Map();
     localList.forEach(item => {
       if (item.certificate_id) certsMap.set(item.certificate_id.toUpperCase(), item);
@@ -128,9 +130,10 @@ export async function listCertificatesFromFirebase() {
       const data = docSnap.data();
       if (data.certificate_id) certsMap.set(data.certificate_id.toUpperCase(), data);
     });
-    return Array.from(certsMap.values());
+    const combined = Array.from(certsMap.values());
+    return combined;
   } catch (error) {
-    console.warn("Error listing certificates from Firebase Firestore / blocked:", error);
+    console.warn("[Firestore] Listing error or notice:", error);
     return localList;
   }
 }
@@ -156,10 +159,10 @@ export async function revokeCertificateInFirebase(certificateId, reason = "Certi
       status: 'Revoked',
       revocation_reason: reason,
       updated_at: new Date().toISOString()
-    }), 2500);
+    }), 5000);
     return true;
   } catch (error) {
-    console.warn(`Firebase Firestore revoke error / blocked for ${cleanId}:`, error);
+    console.warn(`[Firestore] Revoke notice for ${cleanId}:`, error);
     return true;
   }
 }
@@ -180,10 +183,37 @@ export async function deleteCertificateFromFirebase(certificateId) {
 
   try {
     const docRef = doc(db, COLLECTION_NAME, cleanId);
-    await withTimeout(deleteDoc(docRef), 2500);
+    await withTimeout(deleteDoc(docRef), 5000);
     return true;
   } catch (error) {
-    console.warn(`Firebase Firestore delete error / blocked for ${cleanId}:`, error);
+    console.warn(`[Firestore] Delete notice for ${cleanId}:`, error);
     return true;
   }
 }
+
+/**
+ * Export all certificates into a JSON string for offline backup.
+ */
+export async function exportAllCertificatesToJson() {
+  const records = await listCertificatesFromFirebase();
+  return JSON.stringify(records, null, 2);
+}
+
+/**
+ * Import an array of certificate records into Firebase Firestore & LocalStorage.
+ */
+export async function importCertificatesFromJson(jsonArray) {
+  if (!Array.isArray(jsonArray)) {
+    throw new Error("Invalid format: expected an array of certificates");
+  }
+
+  let importedCount = 0;
+  for (const item of jsonArray) {
+    if (item && item.certificate_id) {
+      await saveCertificateToFirebase(item);
+      importedCount++;
+    }
+  }
+  return importedCount;
+}
+

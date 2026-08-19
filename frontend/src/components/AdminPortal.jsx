@@ -28,6 +28,8 @@ import {
   ShieldAlert,
   Laptop,
   Globe,
+  Upload,
+  Database,
   X
 } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
@@ -36,7 +38,9 @@ import {
   saveCertificateToFirebase, 
   listCertificatesFromFirebase, 
   revokeCertificateInFirebase, 
-  deleteCertificateFromFirebase 
+  deleteCertificateFromFirebase,
+  exportAllCertificatesToJson,
+  importCertificatesFromJson
 } from '../firebase/firebaseService';
 
 const DEFAULT_KEY = "OX-SECURE-ADMIN-2026-9f8a3c7b1e4d0258";
@@ -293,7 +297,7 @@ export function AdminPortal({ isOpen, onClose }) {
         qr_status: "Verified & Tamper-Evident",
         verification_standard: "W3C Verifiable Credentials Standard v1.1"
       },
-      verification_url: `https://verify.opportunityx.co.in/?id=${certId}`
+      verification_url: `https://www.verify.opportunityx.co.in/?id=${certId}`
     };
 
     const payload = {
@@ -347,6 +351,48 @@ export function AdminPortal({ isOpen, onClose }) {
     } finally {
       setIssuing(false);
     }
+  };
+
+  const handleExportBackup = async () => {
+    try {
+      const jsonStr = await exportAllCertificatesToJson();
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const dateStr = new Date().toISOString().slice(0, 10);
+      link.download = `OpportunityX_Registry_Backup_${dateStr}.json`;
+      link.href = url;
+      link.click();
+      URL.revokeObjectURL(url);
+      showToast('Registry backup JSON downloaded successfully!', 'success');
+    } catch (err) {
+      console.error('Export error:', err);
+      showToast('Failed to export registry backup.', 'error');
+    }
+  };
+
+  const handleImportBackup = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const parsed = JSON.parse(event.target.result);
+        if (!Array.isArray(parsed)) {
+          showToast('Invalid backup file format. Expected JSON array.', 'error');
+          return;
+        }
+        const count = await importCertificatesFromJson(parsed);
+        showToast(`Successfully imported & synced ${count} certificates to Cloud!`, 'success');
+        fetchRegistryList(adminKey);
+      } catch (err) {
+        console.error('Import error:', err);
+        showToast('Error reading backup file. Please check JSON syntax.', 'error');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   const handleUpdateKey = async (e) => {
@@ -826,14 +872,14 @@ export function AdminPortal({ isOpen, onClose }) {
                             {/* Mini Banner */}
                             <div className="text-center text-[8px] font-mono text-slate-600 pt-1 border-t border-slate-200">
                               <span>Verify at </span>
-                              <strong className="text-slate-900">verify.opportunityx.co.in</strong>
+                              <strong className="text-slate-900">www.verify.opportunityx.co.in</strong>
                             </div>
 
                             {/* Mini Footer */}
                             <div className="flex items-center justify-between pt-1 border-t border-slate-200">
                               <div className="flex items-center gap-1">
                                 <div className="w-6 h-6 border border-slate-300 rounded p-0.5 bg-slate-50">
-                                  <QRCodeSVG value="https://verify.opportunityx.co.in" size={20} fgColor="#0F172A" />
+                                  <QRCodeSVG value="https://www.verify.opportunityx.co.in" size={20} fgColor="#0F172A" />
                                 </div>
                                 <span className="text-[7px] font-mono text-slate-400">SCAN TO VERIFY</span>
                               </div>
@@ -866,10 +912,10 @@ export function AdminPortal({ isOpen, onClose }) {
                 </div>
               )}
 
-              {/* TAB 2: REGISTRY LIST MANAGER */}
+              {/* TAB 2: REGISTRY LIST MANAGER & CLOUD STORE */}
               {activeTab === 'list' && (
                 <div className="p-6 sm:p-8 space-y-4 max-h-[75vh] overflow-y-auto">
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                     <div className="relative w-full sm:w-72">
                       <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input
@@ -881,13 +927,41 @@ export function AdminPortal({ isOpen, onClose }) {
                       />
                     </div>
 
-                    <button
-                      onClick={() => fetchRegistryList(adminKey)}
-                      className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5 border border-slate-300 dark:border-slate-800 transition-colors"
-                    >
-                      <RefreshCw size={13} className={loadingList ? 'animate-spin' : ''} />
-                      <span>Refresh Registry</span>
-                    </button>
+                    <div className="flex items-center flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fetchRegistryList(adminKey)}
+                        className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-300 text-xs font-semibold flex items-center gap-1.5 border border-slate-300 dark:border-slate-800 transition-colors"
+                        title="Reload latest records from Cloud"
+                      >
+                        <RefreshCw size={13} className={loadingList ? 'animate-spin' : ''} />
+                        <span>Refresh</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleExportBackup}
+                        className="px-3 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                        title="Download complete registry JSON backup"
+                      >
+                        <Download size={13} />
+                        <span>Export Backup</span>
+                      </button>
+
+                      <label
+                        className="px-3 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
+                        title="Import JSON backup file into Firestore"
+                      >
+                        <Upload size={13} />
+                        <span>Import Backup</span>
+                        <input
+                          type="file"
+                          accept=".json"
+                          onChange={handleImportBackup}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
                   </div>
 
                   <div className="overflow-x-auto border border-slate-300 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-950 shadow-sm">
@@ -921,19 +995,21 @@ export function AdminPortal({ isOpen, onClose }) {
                               <td className="p-3 text-right space-x-2 whitespace-nowrap">
                                 <button
                                   type="button"
+                                  onClick={() => setViewingDoc(item)}
+                                  className="px-2.5 py-1 rounded bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 font-semibold border border-orange-500/30 text-xs inline-flex items-center gap-1 transition-all"
+                                  title="View and Download PDF / Print Certificate"
+                                >
+                                  <FileText size={13} />
+                                  <span>View / PDF</span>
+                                </button>
+                                <button
+                                  type="button"
                                   onClick={() => setConfirmDeleteCert(item)}
                                   className="px-2.5 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-semibold border border-rose-500/30 text-xs inline-flex items-center gap-1 transition-all"
                                   title="Permanently Delete Certificate"
                                 >
                                   <Trash2 size={13} />
                                   <span>Delete</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setViewingDoc(item)}
-                                  className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 text-orange-600 dark:text-amber-400 font-semibold border border-slate-300 dark:border-slate-800 text-xs inline-flex items-center gap-1 transition-all"
-                                >
-                                  <span>View</span>
                                 </button>
                                 {item.status !== 'Revoked' && (
                                   <button

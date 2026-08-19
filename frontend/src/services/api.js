@@ -54,8 +54,8 @@ export async function fetchCertificateVerification(certificateId) {
         duration: fbData.duration || '',
         issued_date: fbData.issued_date || '',
         issued_by: fbData.issued_by || 'OpportunityX',
-        verification_url: fbData.verification_url || `${window.location.origin}/?id=${cleanId}`,
-        qr_url: fbData.qr_url || '',
+        verification_url: fbData.verification_url || `https://www.verify.opportunityx.co.in/?id=${cleanId}`,
+        qr_url: fbData.qr_url || `https://www.verify.opportunityx.co.in/?id=${cleanId}`,
         digital_signature: fbData.digital_signature || 'ECDSA-256-OX-CLOUD-VERIFIED',
         verification_timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC',
         trust_statement: isRevoked

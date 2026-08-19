@@ -70,8 +70,8 @@ Frontend runs at: `http-[#]localhost:5173/`
   "duration": "6 Months (Jan 2026 - Jun 2026)",
   "issued_date": "June 15, 2026",
   "issued_by": "OpportunityX",
-  "verification_url": "https://verify.opportunityx.co.in/verify/OX-INT-2026-000145",
-  "qr_url": "https://verify.opportunityx.co.in/qr/OX-INT-2026-000145.png",
+  "verification_url": "https://www.verify.opportunityx.co.in/?id=OX-INT-2026-000145",
+  "qr_url": "https://www.verify.opportunityx.co.in/?id=OX-INT-2026-000145",
   "digital_signature": "0x4f8a92b1c3d4e5f67890abcd1234ef567890abcd1234ef567890abcd1234ef56",
   "verification_timestamp": "2026-07-30 10:12:04 UTC",
   "trust_statement": "This certificate has been issued by OpportunityX and successfully verified.",
@@ -81,3 +81,27 @@ Frontend runs at: `http-[#]localhost:5173/`
   }
 }
 ```
+
+---
+
+## 🔒 Firebase Firestore Security Rules
+
+To ensure permanent cloud persistence for all issued certificates, ensure the following rules are active in Firebase Console (`Firestore Database` -> `Rules`):
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /certificates/{certificateId} {
+      allow read, write: if true;
+    }
+    match /settings/{settingId} {
+      allow read, write: if true;
+    }
+    match /passkeys/{passkeyId} {
+      allow read, write: if true;
+    }
+  }
+}
+```
+
