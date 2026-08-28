@@ -1,13 +1,20 @@
 import React from 'react';
-import { ShieldCheck, Sun, Moon, Lock } from 'lucide-react';
+import { Sun, Moon, CircleDot, Lock } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { BrandLogo } from './ui/BrandLogo';
 
 export function Navbar() {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
+
+  const themes = [
+    { id: 'dark', label: 'Dark', icon: Moon },
+    { id: 'light', label: 'Light', icon: Sun },
+    { id: 'monochromatic', label: 'Mono', icon: CircleDot },
+  ];
 
   return (
-    <header className="sticky top-0 z-50 w-full backdrop-blur-xl bg-black/80 border-b border-slate-800/80 transition-colors">
-      <div className="container mx-auto px-4 lg:px-8 h-16 flex items-center justify-between gap-2">
+    <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-canvas/85 border-b border-border-subtle transition-colors">
+      <div className="container mx-auto px-4 lg:px-8 h-16 flex items-center justify-between gap-3">
         
         {/* Registry Brand Header */}
         <div className="flex items-center gap-3">
@@ -15,28 +22,21 @@ export function Navbar() {
             href="https://opportunityx.co.in" 
             target="_blank" 
             rel="noopener noreferrer" 
-            className="flex items-center gap-2.5 group"
+            className="flex items-center gap-2 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring rounded-lg p-0.5 transition-opacity hover:opacity-90"
             title="OpportunityX Ecosystem"
           >
-            <img 
-              src="/favicon.png" 
-              alt="OpportunityX Logo" 
-              className="w-7 h-7 sm:w-8 sm:h-8 object-contain" 
+            <BrandLogo 
+              variant="full" 
+              height={30} 
+              showSubtext={true} 
+              subtext="Credential Verification Registry"
             />
-            <div className="flex flex-col">
-              <span className="font-sans text-sm sm:text-base font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-0.5 leading-none">
-                Opportunity<span className="text-orange-500">X</span>
-              </span>
-              <span className="text-[9px] sm:text-[10px] font-semibold tracking-wider text-slate-500 dark:text-slate-400 uppercase mt-0.5">
-                Credential Verification Registry
-              </span>
-            </div>
           </a>
 
-          <span className="hidden sm:inline-block h-4 w-px bg-slate-300 dark:bg-slate-800 ml-1" />
+          <span className="hidden sm:inline-block h-4 w-px bg-border-subtle ml-1" />
 
-          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-slate-100 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-800 text-[11px] font-mono text-slate-700 dark:text-slate-300">
-            <Lock size={11} className="text-orange-500 dark:text-orange-400" />
+          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-surface border border-border-subtle text-[11px] font-mono text-text-secondary">
+            <Lock size={11} className="text-accent-brand shrink-0" />
             <span>Public Lookup Node</span>
           </div>
         </div>
@@ -44,37 +44,63 @@ export function Navbar() {
         {/* System Online Status & Theme Controls */}
         <div className="flex items-center gap-2 sm:gap-3">
           
-          <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-900/90 border border-slate-300 dark:border-slate-800 text-[11px] sm:text-xs font-mono text-slate-700 dark:text-slate-300">
+          {/* Node Status Indicator */}
+          <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 py-1 rounded-lg bg-surface border border-border-subtle text-[11px] sm:text-xs font-mono text-text-secondary">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            <span className="hidden xs:inline">Node:</span>
-            <span className="text-emerald-600 dark:text-emerald-400 font-bold">ONLINE</span>
+            <span className="hidden xs:inline text-text-muted">Node:</span>
+            <span className="text-emerald-500 font-bold tracking-wide">ONLINE</span>
           </div>
 
-          {/* Professional Dual Theme Toggle Switcher */}
-          <button
-            onClick={toggleTheme}
-            className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl border border-slate-300 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/90 hover:bg-slate-200 dark:hover:bg-slate-800/90 text-xs font-semibold text-slate-800 dark:text-slate-200 transition-all shadow-sm active:scale-95"
-            aria-label="Toggle visual theme"
-            title={theme === 'light' ? 'Switch to AMOLED Dark Mode' : 'Switch to Light Mode'}
+          {/* Canonical 3-Mode Theme Switcher: Dark | Light | Mono */}
+          <div
+            role="radiogroup"
+            aria-label="Color theme switcher"
+            className="inline-flex items-center rounded-lg border border-border-subtle bg-surface p-0.5 sm:p-1 shadow-subtle"
           >
-            {theme === 'light' ? (
-              <>
-                <Sun size={14} className="text-amber-500 shrink-0" />
-                <span className="text-[11px] font-mono font-bold text-amber-600">LIGHT</span>
-              </>
-            ) : (
-              <>
-                <Moon size={14} className="text-cyan-400 shrink-0" />
-                <span className="text-[11px] font-mono font-bold text-cyan-400">AMOLED</span>
-              </>
-            )}
-          </button>
+            {themes.map((t) => {
+              const isSelected = theme === t.id;
+              const Icon = t.icon;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={isSelected}
+                  aria-label={`${t.label} theme`}
+                  onClick={() => setTheme(t.id)}
+                  className={`relative flex items-center gap-1 sm:gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium font-sans transition-all duration-150 active:scale-[0.96] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring ${
+                    isSelected
+                      ? 'bg-surface-elevated text-text-primary shadow-subtle border border-border-subtle font-semibold'
+                      : 'text-text-muted hover:text-text-primary hover:bg-surface-hover border border-transparent'
+                  }`}
+                  title={`Switch to ${t.label} mode`}
+                >
+                  <Icon
+                    size={13}
+                    className={`shrink-0 ${
+                      isSelected
+                        ? theme === 'monochromatic'
+                          ? 'text-text-primary'
+                          : t.id === 'light'
+                          ? 'text-amber-500'
+                          : 'text-text-primary'
+                        : 'text-text-muted'
+                    }`}
+                  />
+                  <span className="hidden sm:inline text-[11px]">{t.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
         </div>
 
       </div>
     </header>
   );
 }
+
+export default Navbar;
