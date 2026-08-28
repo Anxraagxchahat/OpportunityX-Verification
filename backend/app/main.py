@@ -1,4 +1,8 @@
 import logging
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes.verify import router as verify_router
@@ -39,12 +43,10 @@ app.add_middleware(
 app.include_router(verify_router)
 app.include_router(admin_router)
 
-@app.get("/health", tags=["Health"])
+@app.get("/health", tags=["Health"], summary="System Health Check")
 async def health_check():
     return {
-        "status": "healthy",
-        "service": "OpportunityX Verification Engine",
-        "version": "1.0.0"
+        "status": "ok"
     }
 
 @app.get("/", tags=["Health"])

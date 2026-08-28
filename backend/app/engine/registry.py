@@ -21,11 +21,14 @@ class VerificationEngine:
     def register_defaults(self):
         internship_validator = InternshipVerificationValidator()
         self.register_validator("OX-INT", internship_validator)
-        self.register_validator("OX-CAR", GenericVerificationValidator())
+        self.register_validator("OX-ACH", GenericVerificationValidator())
         self.register_validator("OX-WRK", GenericVerificationValidator())
+        self.register_validator("OX-CMP", GenericVerificationValidator())
+        self.register_validator("OX-CA", GenericVerificationValidator())
+        # Backward compatibility
+        self.register_validator("OX-CAR", GenericVerificationValidator())
         self.register_validator("OX-BDG", GenericVerificationValidator())
         self.register_validator("OX-ASM", GenericVerificationValidator())
-        self.register_validator("OX-CMP", GenericVerificationValidator())
 
     def verify(self, certificate_id: str, record: CertificateRecord | None) -> PublicVerificationResponse:
         current_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
