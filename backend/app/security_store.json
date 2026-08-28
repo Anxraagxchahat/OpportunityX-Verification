@@ -1,0 +1,14 @@
+{
+  "settings": {
+    "admin_key": "MY-PERMANENT-CUSTOM-KEY-2026",
+    "is_2fa_enabled": "true"
+  },
+  "passkeys": [
+    {
+      "credential_id": "test_fingerprint_cred_id",
+      "device_name": "Android Smartphone Fingerprint",
+      "registered_at": "2026-07-30 17:33:10 UTC",
+      "ip_address": "127.0.0.1"
+    }
+  ]
+}
