@@ -43,13 +43,13 @@ app.add_middleware(
 app.include_router(verify_router)
 app.include_router(admin_router)
 
-@app.get("/health", tags=["Health"], summary="System Health Check")
+@app.api_route("/health", methods=["GET", "HEAD"], tags=["Health"], summary="System Health Check")
 async def health_check():
     return {
         "status": "ok"
     }
 
-@app.get("/", tags=["Health"])
+@app.api_route("/", methods=["GET", "HEAD"], tags=["Health"])
 async def root_ping():
     return {
         "name": "OpportunityX Verification API",
