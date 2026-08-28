@@ -28,7 +28,7 @@ export function CertificateCard({ result }) {
   if (!result) return null;
 
   const {
-    certificate_id,
+    certificate_id = '',
     status = 'Valid',
     type_label = 'Internship Certificate',
     recipient = 'N/A',
@@ -42,7 +42,22 @@ export function CertificateCard({ result }) {
     details = {},
     metadata = {},
     verification_url = '',
+    product = details.product || 'OpportunityX',
+    period = details.period || 'August 2026 - Present',
+    achievement_title = details.achievement_title || role,
+    achievement_description = details.achievement_description || '',
+    research_title = details.research_title || role,
+    research_area = details.research_area || '',
+    course_name = details.course_name || role,
   } = result;
+
+  const certIdUpper = certificate_id.toUpperCase();
+  const isCA = certIdUpper.includes('OX-CA') || type_label.includes('Contribution') || type_label.includes('Association');
+  const isACH = certIdUpper.includes('OX-ACH') || certIdUpper.includes('OX-CAR') || type_label.includes('Achievement') || type_label.includes('Career');
+  const isWRK = certIdUpper.includes('OX-WRK') || type_label.includes('Research') || type_label.includes('Fellowship');
+  const isCMP = certIdUpper.includes('OX-CMP') || type_label.includes('Course') || type_label.includes('Completion');
+
+  const tagsList = details.key_contributions || details.skills_verified || result.key_contributions || result.skills_verified || [];
 
   const shareUrl = verification_url || `https://www.verify.opportunityx.co.in/?id=${certificate_id}`;
 
@@ -60,27 +75,27 @@ export function CertificateCard({ result }) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-      className="w-full max-w-4xl mx-auto bg-white dark:bg-[#0B0D14] border border-slate-300 dark:border-slate-800 rounded-2xl shadow-xl p-6 sm:p-8 space-y-6 relative overflow-hidden transition-colors duration-300"
+      className="w-full max-w-4xl mx-auto bg-surface-elevated border border-border-subtle rounded-2xl shadow-elevated p-5 sm:p-8 space-y-6 relative overflow-hidden transition-colors duration-200"
     >
       {/* Enterprise Registry Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-border-subtle">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-orange-500/10 border border-orange-500/30 text-orange-500 dark:text-orange-400">
-            <FileCheck size={24} />
+          <div className="p-2.5 rounded-xl bg-accent-subtle border border-accent-brand/20 text-accent-brand">
+            <FileCheck size={22} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold tracking-wider text-orange-600 dark:text-orange-400 uppercase">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-mono font-bold tracking-wider text-accent-brand uppercase">
                 {type_label}
               </span>
-              <span className="text-slate-400 dark:text-slate-700">•</span>
-              <span className="text-xs font-mono text-slate-600 dark:text-slate-400">Record ID: {certificate_id}</span>
+              <span className="text-text-muted">•</span>
+              <span className="text-xs font-mono text-text-secondary">Record ID: {certificate_id}</span>
             </div>
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2 mt-0.5">
-              <span>Official Verification Record</span>
+            <h2 className="text-lg sm:text-xl font-bold text-text-primary tracking-tight font-sans mt-0.5">
+              Official Verification Record
             </h2>
           </div>
         </div>
@@ -91,22 +106,39 @@ export function CertificateCard({ result }) {
       </div>
 
       {/* Official Credential Recipient Banner */}
-      <div className="p-5 sm:p-6 rounded-xl bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 space-y-3">
+      <div className="p-5 sm:p-6 rounded-xl bg-surface border border-border-subtle space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
           <div>
-            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400 block mb-1">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted block mb-1 font-mono">
               Verified Credential Recipient
             </span>
-            <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+            <h3 className="text-2xl sm:text-3xl font-extrabold text-text-primary tracking-tight font-sans">
               {recipient}
             </h3>
           </div>
 
-          <div className="md:text-right border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-800 pt-3 md:pt-0 md:pl-6">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400 block mb-1">
-              Program / Designation Title
+          <div className="md:text-right border-t md:border-t-0 md:border-l border-border-subtle pt-3 md:pt-0 md:pl-6">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted block mb-1 font-mono">
+              {isCA ? 'Role / Designation' : isACH ? 'Achievement Title' : isWRK ? 'Fellowship / Research' : isCMP ? 'Course Title' : 'Program / Designation'}
             </span>
-            <p className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">{role}</p>
+            <p className="text-base sm:text-lg font-bold text-text-primary font-sans">
+              {isCA ? role : isACH ? achievement_title : isWRK ? research_title : isCMP ? course_name : role}
+            </p>
+            {isCA && product && (
+              <p className="text-xs text-text-secondary font-medium mt-0.5">
+                Product / Project: <strong className="font-semibold text-text-primary">{product}</strong>
+              </p>
+            )}
+            {isWRK && research_area && (
+              <p className="text-xs text-text-secondary font-medium mt-0.5">
+                Research Area: <strong className="font-semibold text-text-primary">{research_area}</strong>
+              </p>
+            )}
+            {isACH && achievement_description && (
+              <p className="text-xs text-text-secondary italic mt-0.5">
+                {achievement_description}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -114,68 +146,68 @@ export function CertificateCard({ result }) {
       {/* Structured Registry Data Table */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
         
-        {/* Duration */}
-        <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80">
-          <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5 mb-1">
-            <Clock size={13} className="text-orange-500 dark:text-orange-400" /> Duration
+        {/* Duration / Period */}
+        <div className="p-3.5 rounded-lg bg-surface border border-border-subtle">
+          <span className="text-[11px] font-medium text-text-muted flex items-center gap-1.5 mb-1 font-sans">
+            <Clock size={13} className="text-accent-brand" /> {isCA ? 'Period of Association' : 'Duration'}
           </span>
-          <span className="text-sm font-bold text-slate-900 dark:text-slate-200">{duration}</span>
+          <span className="text-sm font-semibold text-text-primary font-sans">{isCA ? period : duration}</span>
         </div>
 
         {/* Issue Date */}
-        <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80">
-          <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5 mb-1">
-            <Calendar size={13} className="text-orange-500 dark:text-orange-400" /> Issued Date
+        <div className="p-3.5 rounded-lg bg-surface border border-border-subtle">
+          <span className="text-[11px] font-medium text-text-muted flex items-center gap-1.5 mb-1 font-sans">
+            <Calendar size={13} className="text-accent-brand" /> {isCMP ? 'Completion Date' : isACH ? 'Achievement Date' : 'Issued Date'}
           </span>
-          <span className="text-sm font-bold text-slate-900 dark:text-slate-200">{issued_date}</span>
+          <span className="text-sm font-semibold text-text-primary font-sans">{issued_date}</span>
         </div>
 
         {/* Issued By */}
-        <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80">
-          <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5 mb-1">
-            <Building2 size={13} className="text-orange-500 dark:text-orange-400" /> Issuing Authority
+        <div className="p-3.5 rounded-lg bg-surface border border-border-subtle">
+          <span className="text-[11px] font-medium text-text-muted flex items-center gap-1.5 mb-1 font-sans">
+            <Building2 size={13} className="text-accent-brand" /> Issuing Authority
           </span>
-          <span className="text-sm font-bold text-slate-900 dark:text-slate-200">{issued_by}</span>
+          <span className="text-sm font-semibold text-text-primary font-sans">{issued_by}</span>
         </div>
 
         {/* Certificate Status */}
-        <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80">
-          <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5 mb-1">
-            <ShieldCheck size={13} className="text-emerald-500 dark:text-emerald-400" /> Registry State
+        <div className="p-3.5 rounded-lg bg-surface border border-border-subtle">
+          <span className="text-[11px] font-medium text-text-muted flex items-center gap-1.5 mb-1 font-sans">
+            <ShieldCheck size={13} className="text-emerald-500" /> Registry State
           </span>
-          <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{status} & Active</span>
+          <span className="text-sm font-semibold text-emerald-500 font-sans">{status} & Active</span>
         </div>
 
         {/* QR Verification Status */}
-        <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80">
-          <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5 mb-1">
-            <QrCode size={13} className="text-amber-500 dark:text-amber-400" /> QR Audit Status
+        <div className="p-3.5 rounded-lg bg-surface border border-border-subtle">
+          <span className="text-[11px] font-medium text-text-muted flex items-center gap-1.5 mb-1 font-sans">
+            <QrCode size={13} className="text-accent-brand" /> QR Audit Status
           </span>
-          <span className="text-xs font-bold text-slate-900 dark:text-slate-200 truncate block">
+          <span className="text-xs font-semibold text-text-primary font-sans truncate block">
             {metadata.qr_status || 'Verified & Tamper-Evident'}
           </span>
         </div>
 
         {/* Digital Signature Status */}
-        <div className="p-3.5 rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800/80">
-          <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5 mb-1">
-            <Key size={13} className="text-cyan-600 dark:text-cyan-400" /> Cryptographic Standard
+        <div className="p-3.5 rounded-lg bg-surface border border-border-subtle">
+          <span className="text-[11px] font-medium text-text-muted flex items-center gap-1.5 mb-1 font-sans">
+            <Key size={13} className="text-accent-brand" /> Cryptographic Standard
           </span>
-          <span className="text-xs font-bold text-slate-900 dark:text-slate-200 truncate block">
+          <span className="text-xs font-semibold text-text-primary font-sans truncate block">
             {metadata.digital_signature_status || 'Validated (ECDSA-256)'}
           </span>
         </div>
       </div>
 
-      {/* Verified Skills list if present */}
-      {details.skills_verified && details.skills_verified.length > 0 && (
-        <div className="space-y-1.5">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-            Verified Competencies & Evaluation
+      {/* Verified Skills / Key Contributions list if present */}
+      {tagsList && tagsList.length > 0 && (
+        <div className="space-y-2">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted font-mono">
+            {isCA ? 'Key Contributions & Domains' : isCMP ? 'Skills & Modules Completed' : isWRK ? 'Research Methods & Competencies' : 'Verified Competencies & Skills'}
           </span>
           <div className="flex flex-wrap gap-2">
-            {details.skills_verified.map((skill, idx) => (
-              <span key={idx} className="px-3 py-1 rounded-lg bg-orange-500/10 border border-orange-500/30 text-xs font-mono font-bold text-orange-600 dark:text-orange-400">
+            {tagsList.map((skill, idx) => (
+              <span key={idx} className="px-2.5 py-1 rounded-md bg-surface border border-border-subtle text-xs font-mono font-medium text-text-primary">
                 {skill}
               </span>
             ))}
@@ -184,46 +216,46 @@ export function CertificateCard({ result }) {
       )}
 
       {/* Cryptographic Signature Record Box */}
-      <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-1.5">
+      <div className="p-4 rounded-xl bg-surface border border-border-subtle space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] font-mono font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-            <Lock size={12} className="text-orange-500 dark:text-orange-400" /> Cryptographic Proof Signature (SHA-256 / ECDSA)
+          <span className="text-[11px] font-mono font-bold text-text-secondary flex items-center gap-1.5">
+            <Lock size={12} className="text-accent-brand" /> Cryptographic Proof Signature (SHA-256 / ECDSA)
           </span>
 
           <button
             type="button"
             onClick={handleCopySig}
-            className="text-xs font-mono font-bold text-slate-600 hover:text-orange-500 dark:text-slate-400 dark:hover:text-orange-400 flex items-center gap-1 transition-colors"
+            className="text-xs font-mono font-semibold text-text-secondary hover:text-accent-brand flex items-center gap-1 transition-colors cursor-pointer"
           >
             {sigCopied ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
             <span>{sigCopied ? 'Copied' : 'Copy Hash'}</span>
           </button>
         </div>
 
-        <p className="text-xs font-mono text-slate-900 dark:text-slate-300 break-all bg-slate-100 dark:bg-slate-900/80 p-2.5 rounded border border-slate-200 dark:border-slate-800 select-all font-semibold">
+        <p className="text-xs font-mono text-text-primary break-all bg-surface-elevated p-2.5 rounded-lg border border-border-subtle select-all font-medium leading-relaxed">
           {digital_signature}
         </p>
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-600 dark:text-slate-500 pt-0.5 gap-1 font-medium">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-text-muted pt-0.5 gap-1 font-mono">
           <span>Verification Timestamp: {verification_timestamp}</span>
-          <span className="font-mono text-slate-600 dark:text-slate-400">{metadata.verification_standard || 'W3C Verifiable Credentials Standard v1.1'}</span>
+          <span>{metadata.verification_standard || 'W3C Verifiable Credentials Standard v1.1'}</span>
         </div>
       </div>
 
       {/* Official Registry Trust Statement */}
-      <div className="p-3.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center gap-3">
-        <ShieldCheck size={20} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-        <p className="text-xs sm:text-sm font-bold text-emerald-800 dark:text-emerald-200 leading-snug">
+      <div className="p-3.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-3">
+        <ShieldCheck size={18} className="text-emerald-500 shrink-0" />
+        <p className="text-xs sm:text-sm font-semibold text-emerald-500 font-sans leading-snug">
           {trust_statement}
         </p>
       </div>
 
       {/* Action Buttons Row - Public Verification Actions */}
-      <div className="pt-2 border-t border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="pt-2 border-t border-border-subtle grid grid-cols-1 sm:grid-cols-2 gap-3">
         <button
           type="button"
           onClick={() => setIsQrOpen(true)}
-          className="px-4 py-2.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-orange-500/20 active:scale-95 transition-all"
+          className="px-4 py-2.5 rounded-lg bg-surface-elevated hover:bg-surface-hover border border-border-subtle hover:border-border-strong text-text-primary font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer shadow-subtle"
         >
           <QrCode size={15} />
           <span>QR Code Verification</span>
@@ -232,16 +264,16 @@ export function CertificateCard({ result }) {
         <button
           type="button"
           onClick={handleCopyLink}
-          className="px-4 py-2.5 rounded-lg bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-800 text-slate-800 dark:text-slate-200 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
+          className="px-4 py-2.5 rounded-lg bg-accent-brand hover:bg-accent-hover text-white font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-all shadow-subtle cursor-pointer"
         >
-          {copied ? <Check size={15} className="text-emerald-500" /> : <Share2 size={15} className="text-orange-500" />}
+          {copied ? <Check size={15} className="text-white" /> : <Share2 size={15} className="text-white" />}
           <span>{copied ? 'Link Copied!' : 'Copy Verification Link'}</span>
         </button>
       </div>
 
       {/* Verification Notice */}
-      <div className="text-center pt-1 border-t border-slate-200 dark:border-slate-800/60">
-        <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+      <div className="text-center pt-1 border-t border-border-subtle">
+        <p className="text-[11px] font-mono text-text-muted">
           Official Virtual Certificate is issued & delivered directly by OpportunityX Authority. This public portal provides cryptographic credential verification.
         </p>
       </div>
@@ -256,3 +288,5 @@ export function CertificateCard({ result }) {
     </motion.div>
   );
 }
+
+export default CertificateCard;
