@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { X, Copy, Check, Download, ExternalLink, ShieldCheck } from 'lucide-react';
+import { X, Copy, Check, Download, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function QrModal({ isOpen, onClose, certificateId, verificationUrl }) {
@@ -26,85 +26,89 @@ export function QrModal({ isOpen, onClose, certificateId, verificationUrl }) {
     const img = new Image();
 
     img.onload = () => {
-      canvas.width = 400;
-      canvas.height = 400;
-      ctx.fillStyle = '#05070D';
+      canvas.width = 600;
+      canvas.height = 600;
+      ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 20, 20, 360, 360);
+      ctx.drawImage(img, 30, 30, 540, 540);
 
       const pngFile = canvas.toDataURL('image/png');
       const downloadLink = document.createElement('a');
-      downloadLink.download = `QR_${certificateId}.png`;
+      downloadLink.download = `OpportunityX_QR_${certificateId || 'Verification'}.png`;
       downloadLink.href = pngFile;
       downloadLink.click();
     };
 
-    img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgData);
   };
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
         <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 10 }}
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.9, y: 10 }}
-          className="relative w-full max-w-sm rounded-3xl bg-[#0B0D14] border border-slate-800 p-6 sm:p-8 text-center space-y-6 shadow-[0_25px_60px_rgba(0,0,0,0.8)]"
+          exit={{ opacity: 0, scale: 0.95, y: 10 }}
+          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          className="relative w-full max-w-sm rounded-2xl bg-surface-elevated border border-border-subtle p-6 sm:p-7 text-center space-y-5 shadow-elevated"
         >
           {/* Close button */}
           <button
+            type="button"
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white bg-slate-900/60 rounded-full border border-slate-800 transition-colors"
+            className="absolute top-4 right-4 p-1.5 text-text-muted hover:text-text-primary bg-surface rounded-lg border border-border-subtle transition-colors cursor-pointer"
             title="Close"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
 
           {/* Header */}
           <div className="space-y-1">
-            <div className="inline-flex p-3 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-400 mb-2">
-              <ShieldCheck size={28} />
+            <div className="inline-flex p-2.5 rounded-xl bg-accent-subtle border border-accent-brand/20 text-accent-brand mb-1">
+              <ShieldCheck size={24} />
             </div>
-            <h3 className="text-xl font-bold text-white tracking-tight">QR Code Verification</h3>
-            <p className="text-xs font-mono text-slate-400">{certificateId}</p>
+            <h3 className="text-lg font-bold text-text-primary tracking-tight font-sans">QR Code Verification</h3>
+            <p className="text-xs font-mono text-text-muted">{certificateId}</p>
           </div>
 
           {/* QR Code Container */}
-          <div className="p-5 rounded-2xl bg-white/95 border border-slate-700 shadow-inner flex items-center justify-center">
+          <div className="p-4 rounded-xl bg-white border border-border-subtle shadow-sm flex items-center justify-center">
             <QRCodeSVG
               id="certificate-qr-code"
               value={url}
-              size={200}
+              size={180}
               level="H"
               includeMargin={true}
               imageSettings={{
-                src: "/favicon.png",
+                src: "/brand/icon/light/opportunityx-icon-light.png",
                 x: undefined,
                 y: undefined,
-                height: 36,
-                width: 36,
+                height: 38,
+                width: 38,
                 excavate: true,
               }}
             />
           </div>
 
-          <p className="text-xs text-slate-400">
-            Scan this QR code with any standard smartphone camera to verify this certificate on OpportunityX.
+          <p className="text-xs text-text-secondary leading-relaxed font-sans">
+            Scan this QR code with any smartphone camera to verify this certificate on the official OpportunityX registry.
           </p>
 
           {/* Buttons */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2.5 pt-1">
             <button
+              type="button"
               onClick={handleCopy}
-              className="px-4 py-2.5 rounded-xl border border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+              className="px-3.5 py-2.5 rounded-lg border border-border-subtle hover:border-border-strong bg-surface hover:bg-surface-hover text-text-primary text-xs font-semibold flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] cursor-pointer"
             >
-              {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
-              <span>{copied ? 'Copied Link' : 'Copy Link'}</span>
+              {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+              <span>{copied ? 'Copied' : 'Copy Link'}</span>
             </button>
 
             <button
+              type="button"
               onClick={handleDownloadQR}
-              className="px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-lg shadow-orange-500/20"
+              className="px-3.5 py-2.5 rounded-lg bg-accent-brand hover:bg-accent-hover text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-all shadow-subtle active:scale-[0.98] cursor-pointer"
             >
               <Download size={14} />
               <span>Download QR</span>
@@ -115,3 +119,5 @@ export function QrModal({ isOpen, onClose, certificateId, verificationUrl }) {
     </AnimatePresence>
   );
 }
+
+export default QrModal;

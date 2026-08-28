@@ -4,39 +4,54 @@ import { motion } from 'framer-motion';
 export function SkeletonLoader() {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 15 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
-      className="w-full max-w-3xl mx-auto p-6 sm:p-8 rounded-3xl bg-[#0B0D14]/80 border border-slate-800/80 shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-xl space-y-6"
+      className="w-full max-w-4xl mx-auto p-5 sm:p-8 rounded-2xl bg-surface-elevated border border-border-subtle shadow-elevated space-y-6"
     >
-      {/* Badge Skeleton */}
-      <div className="flex items-center justify-between pb-6 border-b border-slate-800/60">
-        <div className="h-8 w-36 bg-slate-800/80 rounded-full animate-pulse" />
-        <div className="h-5 w-48 bg-slate-800/60 rounded-md animate-pulse" />
+      {/* Header Skeleton */}
+      <div className="flex items-center justify-between pb-5 border-b border-border-subtle">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 bg-surface rounded-xl animate-pulse" />
+          <div className="space-y-2">
+            <div className="h-3 w-32 bg-surface rounded animate-pulse" />
+            <div className="h-5 w-48 bg-surface rounded animate-pulse" />
+          </div>
+        </div>
+        <div className="h-7 w-28 bg-surface rounded-md animate-pulse" />
       </div>
 
-      {/* Recipient & Role Skeleton */}
-      <div className="space-y-3">
-        <div className="h-4 w-28 bg-slate-800/60 rounded animate-pulse" />
-        <div className="h-9 w-3/4 bg-slate-800/90 rounded-lg animate-pulse" />
-        <div className="h-6 w-1/2 bg-slate-800/70 rounded-md animate-pulse" />
+      {/* Recipient Banner Skeleton */}
+      <div className="p-5 sm:p-6 rounded-xl bg-surface border border-border-subtle space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <div className="h-3 w-28 bg-surface-hover rounded animate-pulse" />
+            <div className="h-8 w-56 bg-surface-hover rounded-lg animate-pulse" />
+          </div>
+          <div className="space-y-2 md:text-right">
+            <div className="h-3 w-24 bg-surface-hover rounded animate-pulse md:ml-auto" />
+            <div className="h-6 w-44 bg-surface-hover rounded animate-pulse md:ml-auto" />
+          </div>
+        </div>
       </div>
 
       {/* Grid details skeleton */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
         {[1, 2, 3, 4, 5, 6].map((i) => (
-          <div key={i} className="p-4 rounded-xl bg-slate-900/60 border border-slate-800/60 space-y-2">
-            <div className="h-3 w-24 bg-slate-800/60 rounded animate-pulse" />
-            <div className="h-5 w-36 bg-slate-800/80 rounded animate-pulse" />
+          <div key={i} className="p-3.5 rounded-lg bg-surface border border-border-subtle space-y-2">
+            <div className="h-3 w-20 bg-surface-hover rounded animate-pulse" />
+            <div className="h-4 w-32 bg-surface-hover rounded animate-pulse" />
           </div>
         ))}
       </div>
 
-      {/* Bottom bar skeleton */}
-      <div className="pt-4 border-t border-slate-800/60 flex items-center justify-between">
-        <div className="h-4 w-64 bg-slate-800/60 rounded animate-pulse" />
-        <div className="h-9 w-28 bg-slate-800/80 rounded-xl animate-pulse" />
+      {/* Bottom signature skeleton */}
+      <div className="p-4 rounded-xl bg-surface border border-border-subtle space-y-2">
+        <div className="h-3 w-48 bg-surface-hover rounded animate-pulse" />
+        <div className="h-8 w-full bg-surface-elevated rounded border border-border-subtle animate-pulse" />
       </div>
     </motion.div>
   );
 }
+
+export default SkeletonLoader;

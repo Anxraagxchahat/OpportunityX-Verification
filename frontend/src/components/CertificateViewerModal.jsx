@@ -10,16 +10,33 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
 
   if (!isOpen || !data) return null;
 
-  const certificate_id = data.certificate_id;
+  const certificate_id = data.certificate_id || 'OX-INT-2026-000000';
   const recipient = data.recipient || data.recipient_name || 'Recipient Name';
   const type_label = data.type_label || (typeof data.certificate_type === 'string' ? data.certificate_type : data.certificate_type?.value) || 'Internship Certificate';
   const role = data.role || 'Software Engineering Intern';
   const duration = data.duration || '6 Months';
-  const issued_date = data.issued_date || 'June 15, 2026';
+  const issued_date = data.issued_date || 'August 27, 2026';
   const issued_by = data.issued_by || 'OpportunityX';
+  const issuing_person = data.issuing_person || 'Anurag Verma';
+  const issuing_designation = data.issuing_designation || 'Founder & CEO, OpportunityX';
   const digital_signature = data.digital_signature || '0x4f8a92b1c3d4e5f67890abcd1234ef567890abcd';
   const verification_url = data.verification_url || '';
-  const skillsList = data.details?.skills_verified || data.skills_verified || [];
+  const skillsList = data.details?.skills_verified || data.details?.key_contributions || data.key_contributions || data.skills_verified || [];
+
+  // Dynamic fields for specific certificate types
+  const product = data.product || data.details?.product || 'OpportunityX';
+  const period = data.period || data.details?.period || 'August 2026 - Present';
+  const achievement_title = data.achievement_title || data.details?.achievement_title || role;
+  const achievement_description = data.achievement_description || data.details?.achievement_description || '';
+  const research_title = data.research_title || data.details?.research_title || role;
+  const research_area = data.research_area || data.details?.research_area || 'AI-Powered Career Technology';
+  const course_name = data.course_name || data.details?.course_name || role;
+
+  const certIdUpper = certificate_id.toUpperCase();
+  const isCA = certIdUpper.includes('OX-CA') || type_label.includes('Contribution') || type_label.includes('Association');
+  const isACH = certIdUpper.includes('OX-ACH') || certIdUpper.includes('OX-CAR') || type_label.includes('Achievement') || type_label.includes('Career');
+  const isWRK = certIdUpper.includes('OX-WRK') || type_label.includes('Research') || type_label.includes('Fellowship');
+  const isCMP = certIdUpper.includes('OX-CMP') || type_label.includes('Course') || type_label.includes('Completion');
 
   const url = verification_url || `https://www.verify.opportunityx.co.in/?id=${certificate_id}`;
 
@@ -131,14 +148,14 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
             <div className="flex flex-row items-center justify-between border-b border-slate-200 pb-3 z-10">
               <div className="flex flex-row items-center gap-3">
                 <img
-                  src="/favicon.png"
-                  alt="OpportunityX"
+                  src="/brand/icon/light/opportunityx-icon-light.png"
+                  alt="OpportunityX Official Mark"
                   className="w-10 h-10 sm:w-11 sm:h-11 object-contain shrink-0"
                   style={{ display: 'block', verticalAlign: 'middle' }}
                 />
                 <div className="flex flex-col justify-center">
-                  <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 leading-none m-0 p-0">
-                    Opportunity<span className="text-orange-500">X</span>
+                  <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 leading-none m-0 p-0 font-sans">
+                    Opportunity<span className="cert-x-orange text-[#FF6B00]" style={{ color: '#FF6B00' }}>X</span>
                   </h1>
                   <p className="text-[10px] text-slate-600 uppercase tracking-widest font-bold mt-1 leading-none p-0">
                     GLOBAL STUDENT CAREER OS
@@ -161,7 +178,7 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
             </div>
 
             {/* Prominent Central Certificate Body */}
-            <div className="text-center my-auto py-2 z-10 space-y-3">
+            <div className="text-center my-auto py-2 z-10 space-y-2.5">
               <p className="text-xs font-bold tracking-[0.25em] text-slate-600 uppercase">
                 THIS IS TO CERTIFY THAT
               </p>
@@ -174,66 +191,286 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
                 <div style={{ width: '360px', borderBottom: '2px solid #0F172A', margin: '8px auto 0 auto' }} />
               </div>
 
-              <p className="text-xs sm:text-sm text-slate-600 max-w-2xl mx-auto pt-1 font-medium">
-                has successfully completed all official requirements for the <strong className="text-slate-900">{type_label}</strong> in
-              </p>
+              {/* 1. OX-INT (Internship Certificate) */}
+              {!isCA && !isACH && !isWRK && !isCMP && (
+                <>
+                  <p className="text-xs sm:text-sm text-slate-600 max-w-2xl mx-auto pt-1 font-medium">
+                    has successfully completed all official requirements for the <strong className="text-slate-900">{type_label}</strong> in
+                  </p>
+                  <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-snug">
+                    {role}
+                  </h3>
 
-              {/* Role Title */}
-              <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-snug">
-                {role}
-              </h3>
-
-              {/* DURATION, ISSUED DATE, ISSUED BY METADATA ROW */}
-              <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-12 pt-3 pb-1">
-                {/* Duration */}
-                <div className="flex items-center gap-2.5 text-left">
-                  <Clock size={22} className="text-slate-800 shrink-0 stroke-[1.5]" />
-                  <div>
-                    <span className="text-[9px] font-bold tracking-wider text-slate-500 uppercase block">DURATION</span>
-                    <span className="text-xs font-black text-slate-900 block leading-tight">{duration}</span>
+                  <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-12 pt-3 pb-1">
+                    <div className="flex items-center gap-2.5 text-left">
+                      <Clock size={22} className="text-slate-800 shrink-0 stroke-[1.5]" />
+                      <div>
+                        <span className="text-[9px] font-bold tracking-wider text-slate-500 uppercase block">DURATION</span>
+                        <span className="text-xs font-black text-slate-900 block leading-tight">{duration}</span>
+                      </div>
+                    </div>
+                    <div className="h-7 w-px bg-slate-300 hidden sm:block" />
+                    <div className="flex items-center gap-2.5 text-left">
+                      <Calendar size={22} className="text-slate-800 shrink-0 stroke-[1.5]" />
+                      <div>
+                        <span className="text-[9px] font-bold tracking-wider text-slate-500 uppercase block">ISSUED DATE</span>
+                        <span className="text-xs font-black text-slate-900 block leading-tight">{issued_date}</span>
+                      </div>
+                    </div>
+                    <div className="h-7 w-px bg-slate-300 hidden sm:block" />
+                    <div className="flex items-center gap-2.5 text-left">
+                      <Building2 size={22} className="text-slate-800 shrink-0 stroke-[1.5]" />
+                      <div>
+                        <span className="text-[9px] font-bold tracking-wider text-slate-500 uppercase block">ISSUED BY</span>
+                        <span className="text-xs font-black text-slate-900 block leading-tight">{issued_by}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
 
-                <div className="h-7 w-px bg-slate-300 hidden sm:block" />
+                  {skillsList && skillsList.length > 0 && (
+                    <div className="space-y-1 pt-1">
+                      <span className="text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase block">
+                        VERIFIED COMPETENCIES
+                      </span>
+                      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs font-semibold text-slate-800">
+                        {skillsList.map((skill, idx) => (
+                          <React.Fragment key={idx}>
+                            <span className="font-semibold">{skill}</span>
+                            {idx < skillsList.length - 1 && <span className="text-slate-400 font-normal select-none">|</span>}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
 
-                {/* Issued Date */}
-                <div className="flex items-center gap-2.5 text-left">
-                  <Calendar size={22} className="text-slate-800 shrink-0 stroke-[1.5]" />
-                  <div>
-                    <span className="text-[9px] font-bold tracking-wider text-slate-500 uppercase block">ISSUED DATE</span>
-                    <span className="text-xs font-black text-slate-900 block leading-tight">{issued_date}</span>
+              {/* 2. OX-ACH (Certificate of Achievement) */}
+              {isACH && (
+                <>
+                  <p className="text-xs sm:text-sm text-slate-600 max-w-2xl mx-auto pt-1 font-medium">
+                    has been recognised for outstanding achievement in
+                  </p>
+                  <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-snug">
+                    {achievement_title}
+                  </h3>
+                  {achievement_description && (
+                    <p className="text-xs sm:text-sm text-slate-700 max-w-xl mx-auto italic font-medium pt-0.5">
+                      {achievement_description}
+                    </p>
+                  )}
+
+                  <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-12 pt-3 pb-1">
+                    <div className="flex items-center gap-2.5 text-left">
+                      <Calendar size={22} className="text-slate-800 shrink-0 stroke-[1.5]" />
+                      <div>
+                        <span className="text-[9px] font-bold tracking-wider text-slate-500 uppercase block">ISSUED DATE</span>
+                        <span className="text-xs font-black text-slate-900 block leading-tight">{issued_date}</span>
+                      </div>
+                    </div>
+                    <div className="h-7 w-px bg-slate-300 hidden sm:block" />
+                    <div className="flex items-center gap-2.5 text-left">
+                      <Building2 size={22} className="text-slate-800 shrink-0 stroke-[1.5]" />
+                      <div>
+                        <span className="text-[9px] font-bold tracking-wider text-slate-500 uppercase block">ISSUED BY</span>
+                        <span className="text-xs font-black text-slate-900 block leading-tight">{issued_by}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
 
-                <div className="h-7 w-px bg-slate-300 hidden sm:block" />
+                  {skillsList && skillsList.length > 0 && (
+                    <div className="space-y-1 pt-1">
+                      <span className="text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase block">
+                        RECOGNISED COMPETENCIES & DOMAIN
+                      </span>
+                      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs font-semibold text-slate-800">
+                        {skillsList.map((skill, idx) => (
+                          <React.Fragment key={idx}>
+                            <span className="font-semibold">{skill}</span>
+                            {idx < skillsList.length - 1 && <span className="text-slate-400 font-normal select-none">|</span>}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
 
-                {/* Issued By */}
-                <div className="flex items-center gap-2.5 text-left">
-                  <Building2 size={22} className="text-slate-800 shrink-0 stroke-[1.5]" />
-                  <div>
-                    <span className="text-[9px] font-bold tracking-wider text-slate-500 uppercase block">ISSUED BY</span>
-                    <span className="text-xs font-black text-slate-900 block leading-tight">{issued_by}</span>
+              {/* 3. OX-WRK (Research Fellowship Certificate) */}
+              {isWRK && (
+                <>
+                  <p className="text-xs sm:text-sm text-slate-600 max-w-2xl mx-auto pt-1 font-medium">
+                    has successfully completed the
+                  </p>
+                  <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-snug">
+                    {research_title}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-700 max-w-2xl mx-auto font-semibold">
+                    in <strong className="text-slate-900 font-black">{research_area}</strong>
+                  </p>
+                  <p className="text-[11px] sm:text-xs text-slate-600 max-w-xl mx-auto pt-0.5">
+                    During the fellowship, the recipient contributed to research and development activities in the specified area.
+                  </p>
+
+                  <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-12 pt-2.5 pb-1">
+                    <div className="flex items-center gap-2.5 text-left">
+                      <Clock size={22} className="text-slate-800 shrink-0 stroke-[1.5]" />
+                      <div>
+                        <span className="text-[9px] font-bold tracking-wider text-slate-500 uppercase block">DURATION</span>
+                        <span className="text-xs font-black text-slate-900 block leading-tight">{duration}</span>
+                      </div>
+                    </div>
+                    <div className="h-7 w-px bg-slate-300 hidden sm:block" />
+                    <div className="flex items-center gap-2.5 text-left">
+                      <Calendar size={22} className="text-slate-800 shrink-0 stroke-[1.5]" />
+                      <div>
+                        <span className="text-[9px] font-bold tracking-wider text-slate-500 uppercase block">ISSUED DATE</span>
+                        <span className="text-xs font-black text-slate-900 block leading-tight">{issued_date}</span>
+                      </div>
+                    </div>
+                    <div className="h-7 w-px bg-slate-300 hidden sm:block" />
+                    <div className="flex items-center gap-2.5 text-left">
+                      <Building2 size={22} className="text-slate-800 shrink-0 stroke-[1.5]" />
+                      <div>
+                        <span className="text-[9px] font-bold tracking-wider text-slate-500 uppercase block">ISSUED BY</span>
+                        <span className="text-xs font-black text-slate-900 block leading-tight">{issued_by}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              {/* VERIFIED COMPETENCIES */}
-              {skillsList && skillsList.length > 0 && (
-                <div className="space-y-1 pt-1">
-                  <span className="text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase block">
-                    VERIFIED COMPETENCIES
-                  </span>
-                  <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs font-semibold text-slate-800">
-                    {skillsList.map((skill, idx) => (
-                      <React.Fragment key={idx}>
-                        <span className="font-semibold">{skill}</span>
-                        {idx < skillsList.length - 1 && (
-                          <span className="text-slate-400 font-normal select-none">|</span>
-                        )}
-                      </React.Fragment>
-                    ))}
+                  {skillsList && skillsList.length > 0 && (
+                    <div className="space-y-1 pt-1">
+                      <span className="text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase block">
+                        RESEARCH CONTRIBUTIONS & METHODS
+                      </span>
+                      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs font-semibold text-slate-800">
+                        {skillsList.map((skill, idx) => (
+                          <React.Fragment key={idx}>
+                            <span className="font-semibold">{skill}</span>
+                            {idx < skillsList.length - 1 && <span className="text-slate-400 font-normal select-none">|</span>}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* 4. OX-CMP (Course Completion Certificate) */}
+              {isCMP && (
+                <>
+                  <p className="text-xs sm:text-sm text-slate-600 max-w-2xl mx-auto pt-1 font-medium">
+                    has successfully completed the course
+                  </p>
+                  <h3 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-snug">
+                    {course_name}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-600 max-w-2xl mx-auto font-medium">
+                    having fulfilled the prescribed requirements of the program.
+                  </p>
+
+                  <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-12 pt-3 pb-1">
+                    <div className="flex items-center gap-2.5 text-left">
+                      <Clock size={22} className="text-slate-800 shrink-0 stroke-[1.5]" />
+                      <div>
+                        <span className="text-[9px] font-bold tracking-wider text-slate-500 uppercase block">DURATION</span>
+                        <span className="text-xs font-black text-slate-900 block leading-tight">{duration}</span>
+                      </div>
+                    </div>
+                    <div className="h-7 w-px bg-slate-300 hidden sm:block" />
+                    <div className="flex items-center gap-2.5 text-left">
+                      <Calendar size={22} className="text-slate-800 shrink-0 stroke-[1.5]" />
+                      <div>
+                        <span className="text-[9px] font-bold tracking-wider text-slate-500 uppercase block">COMPLETION DATE</span>
+                        <span className="text-xs font-black text-slate-900 block leading-tight">{issued_date}</span>
+                      </div>
+                    </div>
+                    <div className="h-7 w-px bg-slate-300 hidden sm:block" />
+                    <div className="flex items-center gap-2.5 text-left">
+                      <Building2 size={22} className="text-slate-800 shrink-0 stroke-[1.5]" />
+                      <div>
+                        <span className="text-[9px] font-bold tracking-wider text-slate-500 uppercase block">ISSUED BY</span>
+                        <span className="text-xs font-black text-slate-900 block leading-tight">{issued_by}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
+
+                  {skillsList && skillsList.length > 0 && (
+                    <div className="space-y-1 pt-1">
+                      <span className="text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase block">
+                        SKILLS / MODULES COMPLETED
+                      </span>
+                      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs font-semibold text-slate-800">
+                        {skillsList.map((skill, idx) => (
+                          <React.Fragment key={idx}>
+                            <span className="font-semibold">{skill}</span>
+                            {idx < skillsList.length - 1 && <span className="text-slate-400 font-normal select-none">|</span>}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* 5. OX-CA (Certificate of Contribution & Association) */}
+              {isCA && (
+                <>
+                  <p className="text-xs sm:text-sm text-slate-600 max-w-2xl mx-auto pt-1 font-medium">
+                    was associated with
+                  </p>
+                  <h3 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-snug">
+                    {product}
+                  </h3>
+                  <p className="text-sm sm:text-base text-slate-800 max-w-2xl mx-auto font-bold">
+                    as a <span className="text-slate-900 font-black">{role}</span>
+                  </p>
+                  <p className="text-[11px] sm:text-xs text-slate-600 max-w-xl mx-auto pt-0.5">
+                    and contributed to the development, growth, and/or operations of the product during the period of their association.
+                  </p>
+
+                  <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-12 pt-2.5 pb-1">
+                    <div className="flex items-center gap-2.5 text-left font-mono">
+                      <Clock size={22} className="text-slate-800 shrink-0 stroke-[1.5]" />
+                      <div>
+                        <span className="text-[9px] font-bold tracking-wider text-slate-500 uppercase block font-sans">PERIOD OF ASSOCIATION</span>
+                        <span className="text-xs font-black text-slate-900 block leading-tight">{period}</span>
+                      </div>
+                    </div>
+                    <div className="h-7 w-px bg-slate-300 hidden sm:block" />
+                    <div className="flex items-center gap-2.5 text-left">
+                      <Calendar size={22} className="text-slate-800 shrink-0 stroke-[1.5]" />
+                      <div>
+                        <span className="text-[9px] font-bold tracking-wider text-slate-500 uppercase block">ISSUED DATE</span>
+                        <span className="text-xs font-black text-slate-900 block leading-tight">{issued_date}</span>
+                      </div>
+                    </div>
+                    <div className="h-7 w-px bg-slate-300 hidden sm:block" />
+                    <div className="flex items-center gap-2.5 text-left">
+                      <Building2 size={22} className="text-slate-800 shrink-0 stroke-[1.5]" />
+                      <div>
+                        <span className="text-[9px] font-bold tracking-wider text-slate-500 uppercase block">ISSUED BY</span>
+                        <span className="text-xs font-black text-slate-900 block leading-tight">{issued_by}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {skillsList && skillsList.length > 0 && (
+                    <div className="space-y-1 pt-1">
+                      <span className="text-[10px] font-bold tracking-[0.2em] text-slate-500 uppercase block">
+                        KEY CONTRIBUTIONS
+                      </span>
+                      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs font-semibold text-slate-800">
+                        {skillsList.map((skill, idx) => (
+                          <React.Fragment key={idx}>
+                            <span className="font-semibold">{skill}</span>
+                            {idx < skillsList.length - 1 && <span className="text-slate-400 font-normal select-none">|</span>}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -277,16 +514,16 @@ export function CertificateViewerModal({ isOpen, onClose, data }) {
 
               {/* Authority Signature Image */}
               <div className="text-right space-y-0.5">
-                <div className="h-10 flex items-center justify-end">
+                <div className="h-11 sm:h-12 flex items-center justify-end">
                   <img
                     src="/signature_dark.png"
                     alt="OpportunityX Executive Signature"
-                    className="h-full max-h-10 object-contain"
+                    className="h-full max-h-12 object-contain"
                   />
                 </div>
                 <div className="h-px w-36 bg-slate-300 ml-auto my-0.5" />
-                <p className="text-[10px] font-bold text-slate-900 leading-normal">Digitally Signed</p>
-                <p className="text-[9px] text-slate-600 font-medium leading-normal">OpportunityX Verification Registry</p>
+                <p className="text-[10px] font-bold text-slate-900 leading-normal">{issuing_person}</p>
+                <p className="text-[9px] text-slate-600 font-medium leading-normal">{issuing_designation}</p>
                 <p className="text-[8px] font-mono text-slate-500 max-w-[180px] ml-auto leading-normal">
                   Signature Hash: {digital_signature.slice(0, 20)}...
                 </p>
