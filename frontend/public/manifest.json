@@ -1,7 +1,7 @@
 {
-  "name": "OpportunityX",
-  "short_name": "OpportunityX",
-  "description": "AI-powered Career OS for Students. Discover hackathons, internships, scholarships, build dream teams, and analyze resumes with AI.",
+  "name": "OpportunityX Verification",
+  "short_name": "OX Verify",
+  "description": "Instantly verify certificates, internships, and achievements issued by OpportunityX.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",
