@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, useSearchParams, useLocation } from 'react-router-dom';
 import { ThemeProvider } from './context/ThemeContext';
+import { MaintenancePage } from './pages/MaintenancePage';
+import { MAINTENANCE_MODE } from './config/maintenance';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { SearchSection } from './components/SearchSection';
@@ -203,6 +205,10 @@ function VerificationPage() {
 }
 
 export default function App() {
+  if (MAINTENANCE_MODE) {
+    return <MaintenancePage />;
+  }
+
   return (
     <ThemeProvider>
       <BrowserRouter>
