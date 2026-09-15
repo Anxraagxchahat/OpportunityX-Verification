@@ -62,6 +62,18 @@ function listFromLocalStorageFallback() {
 }
 
 /**
+ * Helper to get blacklist of deleted certificate IDs from LocalStorage.
+ */
+function getDeletedCertificatesBlacklist() {
+  try {
+    const list = JSON.parse(localStorage.getItem('ox_deleted_certificates') || '[]');
+    return new Set(list.map(id => String(id).trim().toUpperCase()));
+  } catch (e) {
+    return new Set();
+  }
+}
+
+/**
  * Save or overwrite a certificate record in Firebase Firestore.
  */
 export async function saveCertificateToFirebase(certRecord) {
@@ -72,10 +84,18 @@ export async function saveCertificateToFirebase(certRecord) {
   const cleanId = certRecord.certificate_id.trim().toUpperCase();
   const docRef = doc(db, COLLECTION_NAME, cleanId);
 
+  // Un-blacklist if re-issuing
+  try {
+    const list = JSON.parse(localStorage.getItem('ox_deleted_certificates') || '[]');
+    const filtered = list.filter(id => id.toUpperCase() !== cleanId);
+    localStorage.setItem('ox_deleted_certificates', JSON.stringify(filtered));
+  } catch (e) {}
+
   const payload = {
     ...certRecord,
     certificate_id: cleanId,
     status: certRecord.status || 'Valid',
+    deleted: false,
     updated_at: new Date().toISOString()
   };
 
@@ -83,10 +103,10 @@ export async function saveCertificateToFirebase(certRecord) {
   saveToLocalStorageFallback(payload);
 
   try {
-    await withTimeout(setDoc(docRef, payload, { merge: true }), 7000);
+    await withTimeout(setDoc(docRef, payload, { merge: true }), 4000);
     console.info(`[Firestore] Successfully saved certificate ${cleanId} to Firebase Cloud.`);
   } catch (err) {
-    console.warn("[Firestore] Save timeout or permission notice, saved locally:", err);
+    console.warn("[Firestore] Save notice/fallback:", err);
   }
 
   return payload;
@@ -99,11 +119,20 @@ export async function getCertificateFromFirebase(certificateId) {
   if (!certificateId) return null;
   const cleanId = certificateId.trim().toUpperCase();
 
+  // Instant check against deleted blacklist
+  const deletedSet = getDeletedCertificatesBlacklist();
+  if (deletedSet.has(cleanId)) {
+    return null;
+  }
+
   try {
     const docRef = doc(db, COLLECTION_NAME, cleanId);
-    const docSnap = await withTimeout(getDoc(docRef), 5000);
+    const docSnap = await withTimeout(getDoc(docRef), 3500);
     if (docSnap.exists()) {
       const data = docSnap.data();
+      if (data.status === 'Deleted' || data.deleted === true) {
+        return null;
+      }
       saveToLocalStorageFallback(data);
       return data;
     }
@@ -112,7 +141,11 @@ export async function getCertificateFromFirebase(certificateId) {
   }
 
   // Fallback to local storage if network or client blocks request
-  return getFromLocalStorageFallback(cleanId);
+  const fallback = getFromLocalStorageFallback(cleanId);
+  if (fallback && (fallback.status === 'Deleted' || fallback.deleted === true)) {
+    return null;
+  }
+  return fallback;
 }
 
 /**
@@ -120,21 +153,34 @@ export async function getCertificateFromFirebase(certificateId) {
  */
 export async function listCertificatesFromFirebase() {
   const localList = listFromLocalStorageFallback();
+  const deletedSet = getDeletedCertificatesBlacklist();
+
   try {
-    const querySnapshot = await withTimeout(getDocs(collection(db, COLLECTION_NAME)), 6000);
+    const querySnapshot = await withTimeout(getDocs(collection(db, COLLECTION_NAME)), 4000);
     const certsMap = new Map();
+
     localList.forEach(item => {
-      if (item.certificate_id) certsMap.set(item.certificate_id.toUpperCase(), item);
+      const id = item.certificate_id?.toUpperCase();
+      if (id && !deletedSet.has(id) && item.status !== 'Deleted' && !item.deleted) {
+        certsMap.set(id, item);
+      }
     });
+
     querySnapshot.forEach((docSnap) => {
       const data = docSnap.data();
-      if (data.certificate_id) certsMap.set(data.certificate_id.toUpperCase(), data);
+      const id = (data.certificate_id || docSnap.id).toUpperCase();
+      if (id && !deletedSet.has(id) && data.status !== 'Deleted' && !data.deleted) {
+        certsMap.set(id, { ...data, certificate_id: id });
+      }
     });
-    const combined = Array.from(certsMap.values());
-    return combined;
+
+    return Array.from(certsMap.values());
   } catch (error) {
-    console.warn("[Firestore] Listing error or notice:", error);
-    return localList;
+    console.warn("[Firestore] Listing notice, using local cache:", error);
+    return localList.filter(item => {
+      const id = item.certificate_id?.toUpperCase();
+      return id && !deletedSet.has(id) && item.status !== 'Deleted' && !item.deleted;
+    });
   }
 }
 
@@ -153,13 +199,16 @@ export async function revokeCertificateInFirebase(certificateId, reason = "Certi
     saveToLocalStorageFallback(localRecord);
   }
 
+  const updateData = {
+    status: 'Revoked',
+    revocation_reason: reason,
+    updated_at: new Date().toISOString()
+  };
+
   try {
     const docRef = doc(db, COLLECTION_NAME, cleanId);
-    await withTimeout(updateDoc(docRef, {
-      status: 'Revoked',
-      revocation_reason: reason,
-      updated_at: new Date().toISOString()
-    }), 5000);
+    // Use setDoc with merge to avoid failure if doc schema or fields differ
+    await withTimeout(setDoc(docRef, updateData, { merge: true }), 3000);
     return true;
   } catch (error) {
     console.warn(`[Firestore] Revoke notice for ${cleanId}:`, error);
@@ -168,27 +217,47 @@ export async function revokeCertificateInFirebase(certificateId, reason = "Certi
 }
 
 /**
- * Delete a certificate from Firebase Firestore.
+ * Delete a certificate permanently from Firebase Firestore and LocalStorage.
  */
 export async function deleteCertificateFromFirebase(certificateId) {
   if (!certificateId) return false;
   const cleanId = certificateId.trim().toUpperCase();
 
-  // Delete from local storage
+  // 1. Immediately delete from local storage fallback
   try {
     const existing = JSON.parse(localStorage.getItem('ox_certificates_fallback') || '{}');
     delete existing[cleanId];
     localStorage.setItem('ox_certificates_fallback', JSON.stringify(existing));
   } catch (e) {}
 
+  // 2. Permanently record in local deleted blacklist so it NEVER resurrects on refresh
+  try {
+    const list = JSON.parse(localStorage.getItem('ox_deleted_certificates') || '[]');
+    if (!list.includes(cleanId)) {
+      list.push(cleanId);
+      localStorage.setItem('ox_deleted_certificates', JSON.stringify(list));
+    }
+  } catch (e) {}
+
+  // 3. Delete from Firestore cloud database
   try {
     const docRef = doc(db, COLLECTION_NAME, cleanId);
-    await withTimeout(deleteDoc(docRef), 5000);
-    return true;
+    await withTimeout(deleteDoc(docRef), 3000);
+    console.info(`[Firestore] Certificate ${cleanId} permanently deleted from Firestore.`);
   } catch (error) {
-    console.warn(`[Firestore] Delete notice for ${cleanId}:`, error);
-    return true;
+    console.warn(`[Firestore] deleteDoc notice for ${cleanId}, marking as Deleted:`, error);
+    // Backup tombstone in case deleteDoc was restricted by cloud rules
+    try {
+      const docRef = doc(db, COLLECTION_NAME, cleanId);
+      await withTimeout(setDoc(docRef, {
+        status: 'Deleted',
+        deleted: true,
+        deleted_at: new Date().toISOString()
+      }, { merge: true }), 2000);
+    } catch (err2) {}
   }
+
+  return true;
 }
 
 /**

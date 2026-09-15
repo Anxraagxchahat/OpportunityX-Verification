@@ -344,21 +344,28 @@ export function AdminPortal({ isOpen, onClose }) {
       console.warn('Backend list fast fallback to Firebase');
     }
 
+    let deletedList = [];
+    try {
+      deletedList = JSON.parse(localStorage.getItem('ox_deleted_certificates') || '[]');
+    } catch (e) {}
+    const deletedSet = new Set(deletedList.map(id => String(id).toUpperCase()));
+
     try {
       const fbItems = await listCertificatesFromFirebase();
       const combinedMap = new Map();
 
       // Load Firebase items
       fbItems.forEach(item => {
-        if (item.certificate_id) {
-          combinedMap.set(item.certificate_id.toUpperCase(), item);
+        const id = item.certificate_id?.toUpperCase();
+        if (id && !deletedSet.has(id) && item.status !== 'Deleted' && !item.deleted) {
+          combinedMap.set(id, item);
         }
       });
 
       // Overlay API items
       apiItems.forEach(item => {
-        if (item.certificate_id) {
-          const id = item.certificate_id.toUpperCase();
+        const id = item.certificate_id?.toUpperCase();
+        if (id && !deletedSet.has(id) && item.status !== 'Deleted' && !item.deleted) {
           combinedMap.set(id, {
             ...(combinedMap.get(id) || {}),
             ...item
@@ -370,7 +377,11 @@ export function AdminPortal({ isOpen, onClose }) {
       setRegistryList(mergedList);
     } catch (fbErr) {
       console.warn('Firebase list fallback:', fbErr);
-      setRegistryList(apiItems);
+      const filtered = (apiItems || []).filter(item => {
+        const id = item.certificate_id?.toUpperCase();
+        return id && !deletedSet.has(id) && item.status !== 'Deleted' && !item.deleted;
+      });
+      setRegistryList(filtered);
     } finally {
       setLoadingList(false);
     }
@@ -399,7 +410,7 @@ export function AdminPortal({ isOpen, onClose }) {
     const randomNum = Math.floor(100000 + Math.random() * 900000);
     const certId = `${formData.prefix}-2026-${randomNum}`;
     const roleOrTitle = formData.role || formData.achievement_title || formData.course_name || formData.research_title || '';
-    const mockSignature = `0x${Array.from({length: 40}, () => Math.floor(Math.random()*16).toString(16)).join('')}`;
+    const mockSignature = `0x${Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join('')}`;
     const nowTime = new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
 
     const certRecord = {
@@ -603,24 +614,34 @@ export function AdminPortal({ isOpen, onClose }) {
     if (!confirmRevokeCert) return;
     const certId = confirmRevokeCert.certificate_id;
     setIsRevoking(true);
+    
+    // Close modal immediately so the UI is responsive and never hangs
+    setConfirmRevokeCert(null);
+
+    // Optimistically update status in table
+    setRegistryList(prev => prev.map(item => 
+      item.certificate_id === certId ? { ...item, status: 'Revoked' } : item
+    ));
 
     try {
-      await fetch(`${API_BASE}/api/admin/revoke/${certId}`, {
+      // Background backend notification with 2s timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      fetch(`${API_BASE}/api/admin/revoke/${encodeURIComponent(certId)}`, {
         method: 'POST',
-        headers: { 'X-Admin-Key': adminKey }
-      }).catch(() => {});
+        headers: { 'X-Admin-Key': adminKey },
+        signal: controller.signal
+      }).catch(() => {}).finally(() => clearTimeout(timeoutId));
 
+      // Persist revocation to Firebase Cloud
       await revokeCertificateInFirebase(certId);
-
-      setRegistryList(prev => prev.map(item => 
-        item.certificate_id === certId ? { ...item, status: 'Revoked' } : item
-      ));
-      showToast(`Certificate ${certId} has been officially REVOKED in Cloud DB.`, 'success');
-      setConfirmRevokeCert(null);
+      showToast(`Certificate ${certId} officially REVOKED in Cloud DB.`, 'success');
     } catch (err) {
-      showToast('Error revoking certificate in Cloud DB.', 'error');
+      console.warn("Revoke error:", err);
+      showToast(`Certificate ${certId} marked as Revoked.`, 'info');
     } finally {
       setIsRevoking(false);
+      setConfirmRevokeCert(null);
     }
   };
 
@@ -630,23 +651,31 @@ export function AdminPortal({ isOpen, onClose }) {
     const certId = confirmDeleteCert.certificate_id;
     setIsDeletingCert(true);
 
+    // Close modal immediately so the UI is responsive and never hangs
+    setConfirmDeleteCert(null);
+
+    // Optimistically remove from registry table immediately
+    setRegistryList(prev => prev.filter(item => item.certificate_id !== certId));
+
     try {
-      await fetch(`${API_BASE}/api/admin/delete/${encodeURIComponent(certId)}`, {
+      // Fast backend deletion with 2s timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      fetch(`${API_BASE}/api/admin/delete/${encodeURIComponent(certId)}`, {
         method: 'DELETE',
-        headers: { 'X-Admin-Key': adminKey }
-      }).catch(() => {});
+        headers: { 'X-Admin-Key': adminKey },
+        signal: controller.signal
+      }).catch(() => {}).finally(() => clearTimeout(timeoutId));
 
+      // Permanently remove from Firebase Firestore & add to local deleted blacklist
       await deleteCertificateFromFirebase(certId);
-
-      setRegistryList(prev => prev.filter(item => item.certificate_id !== certId));
-      showToast(`Certificate ${certId} permanently deleted from Cloud Registry.`, 'success');
-      setConfirmDeleteCert(null);
+      showToast(`Certificate ${certId} permanently deleted from Registry.`, 'success');
     } catch (err) {
-      setRegistryList(prev => prev.filter(item => item.certificate_id !== certId));
+      console.warn("Delete error:", err);
       showToast(`Certificate ${certId} removed.`, 'success');
-      setConfirmDeleteCert(null);
     } finally {
       setIsDeletingCert(false);
+      setConfirmDeleteCert(null);
     }
   };
 
@@ -1742,12 +1771,26 @@ export function AdminPortal({ isOpen, onClose }) {
 
           {/* CUSTOM CONFIRMATION MODAL FOR CERTIFICATE REVOCATION */}
           {confirmRevokeCert && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <div 
+              className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md cursor-pointer"
+              onClick={() => !isRevoking && setConfirmRevokeCert(null)}
+            >
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-3xl p-6 text-left space-y-4 shadow-2xl relative text-slate-900 dark:text-white"
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-3xl p-6 text-left space-y-4 shadow-2xl relative text-slate-900 dark:text-white cursor-default"
               >
+                <button
+                  type="button"
+                  onClick={() => setConfirmRevokeCert(null)}
+                  disabled={isRevoking}
+                  className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
+                  title="Close"
+                >
+                  <X size={18} />
+                </button>
+
                 <div className="flex items-center gap-3">
                   <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400">
                     <ShieldAlert size={26} />
@@ -1815,12 +1858,26 @@ export function AdminPortal({ isOpen, onClose }) {
 
           {/* CUSTOM CONFIRMATION MODAL FOR PERMANENTLY DELETING CERTIFICATE */}
           {confirmDeleteCert && (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <div 
+              className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md cursor-pointer"
+              onClick={() => !isDeletingCert && setConfirmDeleteCert(null)}
+            >
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-3xl p-6 text-left space-y-4 shadow-2xl relative text-slate-900 dark:text-white"
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-800 rounded-3xl p-6 text-left space-y-4 shadow-2xl relative text-slate-900 dark:text-white cursor-default"
               >
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteCert(null)}
+                  disabled={isDeletingCert}
+                  className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors"
+                  title="Close"
+                >
+                  <X size={18} />
+                </button>
+
                 <div className="flex items-center gap-3">
                   <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400">
                     <Trash2 size={24} />

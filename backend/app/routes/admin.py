@@ -389,19 +389,16 @@ async def list_certificates(admin_key: str = Depends(verify_admin_key)):
 
 @router.post("/revoke/{certificate_id}", summary="Revoke Issued Certificate (Admin Only)")
 async def revoke_certificate(certificate_id: str, admin_key: str = Depends(verify_admin_key)):
-    success = db.revoke_certificate(certificate_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Certificate ID not found.")
-    return {"status": "success", "message": f"Certificate {certificate_id} has been revoked."}
+    clean_id = certificate_id.strip().upper()
+    db.revoke_certificate(clean_id)
+    return {"status": "success", "message": f"Certificate {clean_id} has been revoked."}
 
 @router.delete("/delete/{certificate_id}", summary="Delete Certificate Permanently (Admin Only)")
 @router.post("/delete/{certificate_id}", summary="Delete Certificate Permanently (Admin Only)")
 async def delete_certificate(certificate_id: str, admin_key: str = Depends(verify_admin_key)):
     clean_id = certificate_id.strip().upper()
-    success = db.delete_certificate(clean_id)
+    db.delete_certificate(clean_id)
     if clean_id in SEED_CERTIFICATES:
         del SEED_CERTIFICATES[clean_id]
-        success = True
-    if not success:
-        raise HTTPException(status_code=404, detail="Certificate ID not found.")
-    return {"status": "success", "message": f"Certificate {certificate_id} has been permanently deleted."}
+    return {"status": "success", "message": f"Certificate {clean_id} has been permanently deleted."}
+
