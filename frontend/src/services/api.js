@@ -1,6 +1,6 @@
 import { getCertificateFromFirebase } from '../firebase/firebaseService';
 
-const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://opportunityx-verification.onrender.com' : 'http://localhost:8000');
+const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://api.verify.opportunityx.co.in' : 'http://localhost:8000');
 const API_BASE_URL = `${API_BASE.replace(/\/$/, '')}/api`;
 
 export async function fetchCertificateVerification(certificateId) {

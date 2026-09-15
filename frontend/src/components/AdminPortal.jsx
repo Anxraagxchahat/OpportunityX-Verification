@@ -44,7 +44,7 @@ import {
   importCertificatesFromJson
 } from '../firebase/firebaseService';
 
-const API_BASE = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://opportunityx-verification.onrender.com' : 'http://localhost:8000')).replace(/\/$/, '');
+const API_BASE = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://api.verify.opportunityx.co.in' : 'http://localhost:8000')).replace(/\/$/, '');
 
 export const CERTIFICATE_TYPES = [
   {
