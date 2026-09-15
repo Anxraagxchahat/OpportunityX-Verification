@@ -10,4 +10,4 @@
  * To restore normal operation, simply change this to false:
  * export const MAINTENANCE_MODE = false;
  */
-export const MAINTENANCE_MODE = true;
+export const MAINTENANCE_MODE = false;
